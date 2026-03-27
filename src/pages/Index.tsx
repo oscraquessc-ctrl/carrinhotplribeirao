@@ -231,7 +231,10 @@ const Index = () => {
       setNomeDupla("");
       setSemDupla(false);
       setLocal("Areias");
-      setHorario("");
+      setHoraInicio("09");
+      setMinInicio("00");
+      setHoraFim("11");
+      setMinFim("00");
       setData(undefined);
       setTodaSemana(false);
       toast.success("Agendamento salvo com sucesso!");
