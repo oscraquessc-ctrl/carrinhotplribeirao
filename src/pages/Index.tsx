@@ -283,14 +283,26 @@ const Index = () => {
   });
 
   const addAvisoMutation = useMutation({
-    mutationFn: async (mensagem: string) => {
+    mutationFn: async ({ mensagem, media_url }: { mensagem: string; media_url?: string }) => {
       if (!user?.id) throw new Error("Não autenticado");
-      const { error } = await supabase.from("avisos").insert({ mensagem, user_id: user.id });
+      let media_type: string | null = null;
+      if (media_url) {
+        const lower = media_url.toLowerCase();
+        if (lower.match(/\.(mp4|webm|ogg|mov)(\?|$)/)) media_type = "video";
+        else media_type = "image";
+      }
+      const { error } = await supabase.from("avisos").insert({
+        mensagem,
+        media_url: media_url || null,
+        media_type,
+        user_id: user.id,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["avisos"] });
       setNovoAviso("");
+      setMediaUrl("");
       toast.success("Aviso publicado!");
     },
     onError: () => toast.error("Erro ao publicar aviso."),
