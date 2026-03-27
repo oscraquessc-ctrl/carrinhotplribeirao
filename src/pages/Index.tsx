@@ -1,16 +1,624 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase, type Agendamento } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { CalendarDays, CalendarIcon, MapPin, Users, Trash2, Plus, Clock, Repeat, LogOut, Filter, Sun, Moon, LayoutGrid, List } from "lucide-react";
+import WhatsAppIcon from "@/components/WhatsAppIcon";
+import { Link } from "react-router-dom";
+import { z } from "zod";
+import { getDay, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import coverImage from "@/assets/cover.webp";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const HORARIOS = [
+  "07:00 - 09:00",
+  "09:00 - 11:00",
+  "11:00 - 13:00",
+  "13:00 - 15:00",
+  "15:00 - 17:00",
+  "17:00 - 19:00",
+  "19:00 - 21:00",
+  "21:00 - 23:00",
+];
+
+const agendamentoSchema = z.object({
+  nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
+  nome_dupla: z.string().trim().max(100).optional(),
+  sem_dupla: z.boolean(),
+  local: z.enum(["Carrinho", "Areias", "Ribeirão", "Display"]),
+  horario: z.string().min(1, "Selecione um horário"),
+  data: z.string().optional(),
+  toda_semana: z.boolean(),
+});
+
+const fetchAgendamentos = async (): Promise<Agendamento[]> => {
+  const { data, error } = await supabase
+    .from("agendamentos")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as Agendamento[];
+};
+
+const LOCAL_COLORS: Record<string, string> = {
+  Carrinho: "bg-primary/10 text-primary border-primary/30",
+  Areias: "bg-accent/10 text-accent-foreground border-accent/30",
+  Ribeirão: "bg-secondary text-secondary-foreground border-border",
+  Display: "bg-primary/15 text-primary border-primary/20",
+};
+
+const AgendamentoCard = memo(({
+  a,
+  isAdmin,
+  onDelete,
+}: {
+  a: Agendamento;
+  isAdmin: boolean;
+  onDelete: (id: string) => void;
+}) => (
+  <Card className="group relative hover:shadow-md transition-shadow duration-200 border-border/60">
+    <CardContent className="p-4">
+      <div className="flex items-start justify-between">
+        <div className="space-y-1.5">
+          <p className="font-bold text-foreground">{a.nome}</p>
+          <p className="text-sm text-muted-foreground">
+            {a.sem_dupla ? "Sem dupla" : a.nome_dupla ? `Dupla: ${a.nome_dupla}` : "Sem dupla informada"}
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${LOCAL_COLORS[a.local] || ""}`}>
+              {a.local}
+            </span>
+            {a.horario && (
+              <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                <Clock className="h-3 w-3" />{a.horario}
+              </span>
+            )}
+            {a.data && (
+              <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                <CalendarIcon className="h-3 w-3" />{format(new Date(a.data + "T12:00:00"), "dd/MM/yyyy")}
+              </span>
+            )}
+            {a.toda_semana && (
+              <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
+                <Repeat className="h-3 w-3" />Toda semana
+              </span>
+            )}
+          </div>
+        </div>
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(a.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    </CardContent>
+  </Card>
+));
+AgendamentoCard.displayName = "AgendamentoCard";
+
+const Index = () => {
+  const { user, isAdmin, signOut } = useAuth();
+  const queryClient = useQueryClient();
+  const [nome, setNome] = useState("");
+  const [nomeDupla, setNomeDupla] = useState("");
+  const [semDupla, setSemDupla] = useState(false);
+  const [local, setLocal] = useState<string>("Areias");
+  const [horario, setHorario] = useState("");
+  const [data, setData] = useState<Date>();
+  const [todaSemana, setTodaSemana] = useState(false);
+
+  const [filtroLocal, setFiltroLocal] = useState<string>("todos");
+  const [filtroHorario, setFiltroHorario] = useState<string>("todos");
+  const [displayMode, setDisplayMode] = useState<"grid" | "list">(() => {
+    return (localStorage.getItem("displayMode") as "grid" | "list") || "grid";
+  });
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    const isDark = saved === "dark";
+    document.documentElement.classList.toggle("dark", isDark);
+    return isDark;
+  });
+
+  const { data: agendamentos = [], isLoading } = useQuery({
+    queryKey: ["agendamentos"],
+    queryFn: fetchAgendamentos,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel("agendamentos-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+        }, 1000);
+      })
+      .subscribe();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  const agendamentosFiltrados = useMemo(
+    () =>
+      agendamentos.filter((a) => {
+        if (filtroLocal !== "todos" && a.local !== filtroLocal) return false;
+        if (filtroHorario !== "todos" && a.horario !== filtroHorario) return false;
+        return true;
+      }),
+    [agendamentos, filtroLocal, filtroHorario]
+  );
+
+  const dayGroups = useMemo(() => {
+    const groups: Record<number, Agendamento[]> = {};
+    for (const a of agendamentosFiltrados) {
+      if (a.data) {
+        const day = getDay(new Date(a.data + "T12:00:00"));
+        if (!groups[day]) groups[day] = [];
+        groups[day].push(a);
+      }
+    }
+    return groups;
+  }, [agendamentosFiltrados]);
+
+  const addMutation = useMutation({
+    mutationFn: async (formData: z.infer<typeof agendamentoSchema>) => {
+      if (!user?.id) throw new Error("Usuário não autenticado");
+      const baseRow = {
+        nome: formData.nome,
+        nome_dupla: formData.sem_dupla ? null : formData.nome_dupla || null,
+        sem_dupla: formData.sem_dupla,
+        local: formData.local,
+        horario: formData.horario,
+        toda_semana: formData.toda_semana,
+        user_id: user.id,
+      };
+
+      if (formData.toda_semana && formData.data) {
+        const rows = [];
+        for (let i = 0; i < 4; i++) {
+          const d = new Date(formData.data + "T12:00:00");
+          d.setDate(d.getDate() + i * 7);
+          rows.push({ ...baseRow, data: format(d, "yyyy-MM-dd") });
+        }
+        const { error } = await supabase.from("agendamentos").insert(rows);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("agendamentos").insert({
+          ...baseRow,
+          data: formData.data || null,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      setNome("");
+      setNomeDupla("");
+      setSemDupla(false);
+      setLocal("Areias");
+      setHorario("");
+      setData(undefined);
+      setTodaSemana(false);
+      toast.success("Agendamento salvo com sucesso!");
+    },
+    onError: (error: any) => {
+      if (error?.code === "23505") {
+        toast.error("Esse horário já foi reservado nessa data e local! Escolha outro horário ou data.");
+      } else {
+        toast.error("Erro ao salvar. Tente novamente.");
+      }
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("agendamentos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      toast.success("Agendamento removido!");
+    },
+    onError: () => toast.error("Erro ao remover."),
+  });
+
+  const handleDelete = useCallback((id: string) => {
+    deleteMutation.mutate(id);
+  }, [deleteMutation]);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const parsed = agendamentoSchema.safeParse({
+        nome,
+        nome_dupla: semDupla ? undefined : nomeDupla,
+        sem_dupla: semDupla,
+        local,
+        horario,
+        data: data ? format(data, "yyyy-MM-dd") : undefined,
+        toda_semana: todaSemana,
+      });
+      if (!parsed.success) {
+        toast.error(parsed.error.errors[0]?.message || "Dados inválidos");
+        return;
+      }
+
+      const dataFormatada = data ? format(data, "yyyy-MM-dd") : null;
+      const jaExiste = agendamentos.some(
+        (a) => a.local === local && a.horario === horario && a.data === dataFormatada
+      );
+
+      if (jaExiste && dataFormatada) {
+        toast.error("Esse horário já foi reservado nessa data e local! Escolha outro horário ou data.");
+        return;
+      }
+
+      addMutation.mutate(parsed.data);
+    },
+    [nome, nomeDupla, semDupla, local, horario, data, todaSemana, agendamentos, addMutation]
+  );
+
+  const toggleTheme = useCallback(() => {
+    setDarkMode((prev) => {
+      const next = !prev;
+      document.documentElement.classList.toggle("dark", next);
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  }, []);
+
+  const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur-md shadow-sm">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-6 w-6 text-primary" />
+            <h1 className="text-lg sm:text-xl font-bold text-foreground">Agenda dos Carrinhos</h1>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title={darkMode ? "Fundo branco" : "Fundo preto"}
+              onClick={toggleTheme}
+            >
+              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <a href="https://wa.me/5548988425163?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20a%20agenda%20do%20carrinho" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="icon" className="h-8 w-8" title="Ajuda via WhatsApp">
+                <WhatsAppIcon className="h-4 w-4 text-primary" />
+              </Button>
+            </a>
+            <Link to="/informacoes">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm">
+                <MapPin className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Informações</span>
+                <span className="sm:hidden">Info</span>
+              </Button>
+            </Link>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm">
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sair
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Deseja sair?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Você será desconectado da sua conta e redirecionado para a página inicial.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => signOut()}>Sair</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+      </header>
+
+      {/* Cover Image */}
+      <div className="relative w-full h-44 sm:h-56 md:h-64 overflow-hidden">
+        <img
+          src={coverImage}
+          alt="Carrinho TPL Ribeirão - Testemunho Público"
+          className="w-full h-full object-cover"
+          loading="eager"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+        <div className="absolute bottom-4 left-0 right-0 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold drop-shadow-lg text-secondary-foreground">
+            Carrinho TPL Ribeirão
+          </h2>
+          <p className="text-sm drop-shadow text-secondary-foreground">
+            Agenda de Testemunho Público
+          </p>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        {/* Form */}
+        <Card className="border border-primary/15 shadow-md">
+          <CardHeader className="bg-primary/5 rounded-t-lg pb-3">
+            <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
+              <Plus className="h-5 w-5" />
+              CARRINHO TPL RIBEIRÃO
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="nome" className="font-semibold text-sm">Seu Nome</Label>
+                <Input
+                  id="nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Digite seu nome"
+                  maxLength={100}
+                  required
+                  className="h-10"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="semDupla"
+                  checked={semDupla}
+                  onCheckedChange={(v) => setSemDupla(v === true)}
+                />
+                <Label htmlFor="semDupla" className="cursor-pointer text-sm">Estou sem dupla</Label>
+              </div>
+
+              {!semDupla && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="nomeDupla" className="font-semibold text-sm">Nome da Dupla</Label>
+                  <Input
+                    id="nomeDupla"
+                    value={nomeDupla}
+                    onChange={(e) => setNomeDupla(e.target.value)}
+                    placeholder="Digite o nome da dupla"
+                    maxLength={100}
+                    className="h-10"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="font-semibold text-sm">Local</Label>
+                <RadioGroup value={local} onValueChange={setLocal} className="flex gap-4 flex-wrap">
+                  {["Areias", "Ribeirão", "Display"].map((l) => (
+                    <div key={l} className="flex items-center gap-2">
+                      <RadioGroupItem value={l} id={l} />
+                      <Label htmlFor={l} className="cursor-pointer font-medium text-sm">{l}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-semibold text-sm flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  Horário
+                </Label>
+                <RadioGroup value={horario} onValueChange={setHorario} className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
+                  {HORARIOS.map((h) => (
+                    <div key={h} className="flex items-center gap-1.5">
+                      <RadioGroupItem value={h} id={`horario-${h}`} />
+                      <Label htmlFor={`horario-${h}`} className="cursor-pointer font-medium text-xs sm:text-sm">{h}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-semibold text-sm flex items-center gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  Data
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-10",
+                        !data && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {data ? format(data, "PPP", { locale: ptBR }) : "Selecione uma data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={data}
+                      onSelect={setData}
+                      initialFocus
+                      locale={ptBR}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="todaSemana"
+                  checked={todaSemana}
+                  onCheckedChange={(v) => setTodaSemana(v === true)}
+                />
+                <Label htmlFor="todaSemana" className="cursor-pointer flex items-center gap-1 text-sm">
+                  <Repeat className="h-3.5 w-3.5" />
+                  Toda semana
+                </Label>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full font-semibold h-11 text-sm sm:text-base"
+                disabled={addMutation.isPending}
+              >
+                {addMutation.isPending ? "Salvando..." : "Salvar Agendamento"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Agenda */}
+        <div>
+          <h2 className="mb-4 flex items-center gap-2 text-lg sm:text-xl font-bold text-foreground">
+            <Users className="h-5 w-5 text-primary" />
+            Agenda ({agendamentosFiltrados.length})
+          </h2>
+
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <Select value={filtroLocal} onValueChange={setFiltroLocal}>
+              <SelectTrigger className="w-[140px] h-9 text-xs">
+                <Filter className="h-3 w-3 mr-1" />
+                <SelectValue placeholder="Local" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os locais</SelectItem>
+                <SelectItem value="Areias">Areias</SelectItem>
+                <SelectItem value="Ribeirão">Ribeirão</SelectItem>
+                <SelectItem value="Display">Display</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filtroHorario} onValueChange={setFiltroHorario}>
+              <SelectTrigger className="w-[160px] h-9 text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                <SelectValue placeholder="Horário" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os horários</SelectItem>
+                {HORARIOS.map((h) => (
+                  <SelectItem key={h} value={h}>{h}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="ml-auto flex gap-1 border border-border rounded-md p-0.5">
+              <Button
+                variant={displayMode === "grid" ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => { setDisplayMode("grid"); localStorage.setItem("displayMode", "grid"); }}
+                title="Grade"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={displayMode === "list" ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => { setDisplayMode("list"); localStorage.setItem("displayMode", "list"); }}
+                title="Lista"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="h-8 w-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+            </div>
+          ) : agendamentosFiltrados.length === 0 ? (
+            <Card className="py-12 text-center border-dashed">
+              <CardContent>
+                <p className="text-muted-foreground">
+                  {agendamentos.length === 0 ? "Nenhum agendamento ainda. Seja o primeiro!" : "Nenhum resultado para os filtros selecionados."}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Tabs defaultValue="todos" className="w-full">
+              <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
+                <TabsTrigger value="todos" className="text-xs">Todos</TabsTrigger>
+                {DIAS.map((dia, i) => {
+                  const count = dayGroups[i]?.length || 0;
+                  if (count === 0) return null;
+                  return (
+                    <TabsTrigger key={dia} value={String(i)} className="text-xs">
+                      {dia} ({count})
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              <TabsContent value="todos" className="mt-3">
+                <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
+                  {agendamentosFiltrados.map((a) => (
+                    <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} />
+                  ))}
+                </div>
+              </TabsContent>
+
+              {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
+                const filtered = dayGroups[dayIndex];
+                if (!filtered || filtered.length === 0) return null;
+                return (
+                  <TabsContent key={dayIndex} value={String(dayIndex)} className="mt-3">
+                    <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
+                      {filtered.map((a) => (
+                        <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} />
+                      ))}
+                    </div>
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
+          )}
+        </div>
+      </main>
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
