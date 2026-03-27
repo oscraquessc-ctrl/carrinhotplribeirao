@@ -39,16 +39,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const HORARIOS = [
-  "07:00 - 09:00",
-  "09:00 - 11:00",
-  "11:00 - 13:00",
-  "13:00 - 15:00",
-  "15:00 - 17:00",
-  "17:00 - 19:00",
-  "19:00 - 21:00",
-  "21:00 - 23:00",
-];
+const HORAS = Array.from({ length: 17 }, (_, i) => String(i + 7).padStart(2, "0")); // 07-23
+const MINUTOS = ["00", "15", "30", "45"];
 
 const agendamentoSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
