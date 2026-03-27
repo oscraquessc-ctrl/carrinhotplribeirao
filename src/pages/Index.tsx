@@ -39,16 +39,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const HORARIOS = [
-  "07:00 - 09:00",
-  "09:00 - 11:00",
-  "11:00 - 13:00",
-  "13:00 - 15:00",
-  "15:00 - 17:00",
-  "17:00 - 19:00",
-  "19:00 - 21:00",
-  "21:00 - 23:00",
-];
+const HORAS = Array.from({ length: 17 }, (_, i) => String(i + 7).padStart(2, "0")); // 07-23
+const MINUTOS = ["00", "15", "30", "45"];
 
 const agendamentoSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -137,7 +129,11 @@ const Index = () => {
   const [nomeDupla, setNomeDupla] = useState("");
   const [semDupla, setSemDupla] = useState(false);
   const [local, setLocal] = useState<string>("Areias");
-  const [horario, setHorario] = useState("");
+  const [horaInicio, setHoraInicio] = useState("09");
+  const [minInicio, setMinInicio] = useState("00");
+  const [horaFim, setHoraFim] = useState("11");
+  const [minFim, setMinFim] = useState("00");
+  const horario = `${horaInicio}:${minInicio} - ${horaFim}:${minFim}`;
   const [data, setData] = useState<Date>();
   const [todaSemana, setTodaSemana] = useState(false);
 
@@ -235,7 +231,10 @@ const Index = () => {
       setNomeDupla("");
       setSemDupla(false);
       setLocal("Areias");
-      setHorario("");
+      setHoraInicio("09");
+      setMinInicio("00");
+      setHoraFim("11");
+      setMinFim("00");
       setData(undefined);
       setTodaSemana(false);
       toast.success("Agendamento salvo com sucesso!");
@@ -446,14 +445,56 @@ const Index = () => {
                   <Clock className="h-3.5 w-3.5" />
                   Horário
                 </Label>
-                <RadioGroup value={horario} onValueChange={setHorario} className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
-                  {HORARIOS.map((h) => (
-                    <div key={h} className="flex items-center gap-1.5">
-                      <RadioGroupItem value={h} id={`horario-${h}`} />
-                      <Label htmlFor={`horario-${h}`} className="cursor-pointer font-medium text-xs sm:text-sm">{h}</Label>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground font-medium">De</span>
+                    <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shadow-sm">
+                      <select
+                        value={horaInicio}
+                        onChange={(e) => setHoraInicio(e.target.value)}
+                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
+                      >
+                        {HORAS.map((h) => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span className="text-2xl font-bold text-primary animate-pulse">:</span>
+                      <select
+                        value={minInicio}
+                        onChange={(e) => setMinInicio(e.target.value)}
+                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
+                      >
+                        {MINUTOS.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
                     </div>
-                  ))}
-                </RadioGroup>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground font-medium">Até</span>
+                    <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shadow-sm">
+                      <select
+                        value={horaFim}
+                        onChange={(e) => setHoraFim(e.target.value)}
+                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
+                      >
+                        {HORAS.map((h) => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span className="text-2xl font-bold text-primary animate-pulse">:</span>
+                      <select
+                        value={minFim}
+                        onChange={(e) => setMinFim(e.target.value)}
+                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
+                      >
+                        {MINUTOS.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -531,18 +572,12 @@ const Index = () => {
                 <SelectItem value="Display">Display</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filtroHorario} onValueChange={setFiltroHorario}>
-              <SelectTrigger className="w-[160px] h-9 text-xs">
-                <Clock className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Horário" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os horários</SelectItem>
-                {HORARIOS.map((h) => (
-                  <SelectItem key={h} value={h}>{h}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              placeholder="Filtrar horário..."
+              value={filtroHorario === "todos" ? "" : filtroHorario}
+              onChange={(e) => setFiltroHorario(e.target.value || "todos")}
+              className="w-[160px] h-9 text-xs"
+            />
             <div className="ml-auto flex gap-1 border border-border rounded-md p-0.5">
               <Button
                 variant={displayMode === "grid" ? "default" : "ghost"}
