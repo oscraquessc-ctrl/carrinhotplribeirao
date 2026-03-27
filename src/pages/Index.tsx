@@ -698,6 +698,77 @@ const Index = () => {
             </Tabs>
           )}
         </div>
+        {/* Quadro de Avisos */}
+        <Card className="border border-accent/30 shadow-md">
+          <CardHeader className="bg-accent/10 rounded-t-lg pb-3">
+            <CardTitle className="flex items-center gap-2 text-accent-foreground text-base sm:text-lg">
+              <Megaphone className="h-5 w-5 text-accent" />
+              Quadro de Avisos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3">
+            {isAdmin && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (novoAviso.trim()) addAvisoMutation.mutate(novoAviso.trim());
+                }}
+                className="flex gap-2"
+              >
+                <Textarea
+                  value={novoAviso}
+                  onChange={(e) => setNovoAviso(e.target.value)}
+                  placeholder="Escreva um aviso..."
+                  maxLength={500}
+                  className="min-h-[60px] text-sm"
+                />
+                <Button type="submit" size="sm" className="shrink-0 self-end" disabled={addAvisoMutation.isPending}>
+                  Publicar
+                </Button>
+              </form>
+            )}
+            {avisos.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum aviso no momento.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {avisos.map((aviso) => (
+                  <div key={aviso.id} className="rounded-lg bg-secondary p-3 flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">{aviso.mensagem}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(aviso.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10"
+                        onClick={() => deleteAvisoMutation.mutate(aviso.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Admin Link */}
+        {isAdmin && (
+          <div className="flex justify-center">
+            <Link to="/admin">
+              <Button variant="outline" className="gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                Painel Admin
+              </Button>
+            </Link>
+          </div>
+        )}
       </main>
     </div>
   );
