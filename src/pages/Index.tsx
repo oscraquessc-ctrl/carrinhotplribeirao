@@ -699,10 +699,10 @@ const Index = () => {
           )}
         </div>
         {/* Quadro de Avisos */}
-        <Card className="border border-accent/30 shadow-md">
-          <CardHeader className="bg-accent/10 rounded-t-lg pb-3">
-            <CardTitle className="flex items-center gap-2 text-accent-foreground text-base sm:text-lg">
-              <Megaphone className="h-5 w-5 text-accent" />
+        <Card className="border border-primary/30 shadow-md">
+          <CardHeader className="bg-primary/10 rounded-t-lg pb-3">
+            <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
+              <Megaphone className="h-5 w-5 text-primary" />
               Quadro de Avisos
             </CardTitle>
           </CardHeader>
