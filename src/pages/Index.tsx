@@ -129,7 +129,11 @@ const Index = () => {
   const [nomeDupla, setNomeDupla] = useState("");
   const [semDupla, setSemDupla] = useState(false);
   const [local, setLocal] = useState<string>("Areias");
-  const [horario, setHorario] = useState("");
+  const [horaInicio, setHoraInicio] = useState("09");
+  const [minInicio, setMinInicio] = useState("00");
+  const [horaFim, setHoraFim] = useState("11");
+  const [minFim, setMinFim] = useState("00");
+  const horario = `${horaInicio}:${minInicio} - ${horaFim}:${minFim}`;
   const [data, setData] = useState<Date>();
   const [todaSemana, setTodaSemana] = useState(false);
 
