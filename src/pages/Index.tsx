@@ -445,14 +445,56 @@ const Index = () => {
                   <Clock className="h-3.5 w-3.5" />
                   Horário
                 </Label>
-                <RadioGroup value={horario} onValueChange={setHorario} className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
-                  {HORARIOS.map((h) => (
-                    <div key={h} className="flex items-center gap-1.5">
-                      <RadioGroupItem value={h} id={`horario-${h}`} />
-                      <Label htmlFor={`horario-${h}`} className="cursor-pointer font-medium text-xs sm:text-sm">{h}</Label>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground font-medium">De</span>
+                    <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shadow-sm">
+                      <select
+                        value={horaInicio}
+                        onChange={(e) => setHoraInicio(e.target.value)}
+                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
+                      >
+                        {HORAS.map((h) => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span className="text-2xl font-bold text-primary animate-pulse">:</span>
+                      <select
+                        value={minInicio}
+                        onChange={(e) => setMinInicio(e.target.value)}
+                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
+                      >
+                        {MINUTOS.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
                     </div>
-                  ))}
-                </RadioGroup>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground font-medium">Até</span>
+                    <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shadow-sm">
+                      <select
+                        value={horaFim}
+                        onChange={(e) => setHoraFim(e.target.value)}
+                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
+                      >
+                        {HORAS.map((h) => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span className="text-2xl font-bold text-primary animate-pulse">:</span>
+                      <select
+                        value={minFim}
+                        onChange={(e) => setMinFim(e.target.value)}
+                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
+                      >
+                        {MINUTOS.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
