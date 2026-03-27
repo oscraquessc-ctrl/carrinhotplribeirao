@@ -160,6 +160,7 @@ const Index = () => {
   });
 
   const [novoAviso, setNovoAviso] = useState("");
+  const [mediaUrl, setMediaUrl] = useState("");
 
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["agendamentos"],
