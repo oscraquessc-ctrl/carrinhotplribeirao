@@ -129,7 +129,7 @@ const fetchAvisos = async () => {
     .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return data as { id: string; mensagem: string; created_at: string; user_id: string }[];
+  return data as { id: string; mensagem: string; media_url: string | null; media_type: string | null; created_at: string; user_id: string }[];
 };
 
 const Index = () => {
