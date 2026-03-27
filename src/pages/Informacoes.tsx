@@ -27,7 +27,7 @@ const locais = [
   },
   {
     nome: "Display",
-    descricao: "Expositor fixo para testemunho público",
+    descricao: "Rodovia Francisco Thomaz dos Santos, 10, Trevo do Erasmo",
     responsavel: "Sarinely",
     telefone: "48992334710",
     icon: "monitor",
