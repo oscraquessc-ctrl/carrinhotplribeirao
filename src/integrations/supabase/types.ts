@@ -57,18 +57,24 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          media_type: string | null
+          media_url: string | null
           mensagem: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          media_type?: string | null
+          media_url?: string | null
           mensagem: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          media_type?: string | null
+          media_url?: string | null
           mensagem?: string
           user_id?: string
         }
