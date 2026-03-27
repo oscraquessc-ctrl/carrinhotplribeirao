@@ -123,6 +123,15 @@ const AgendamentoCard = memo(({
 ));
 AgendamentoCard.displayName = "AgendamentoCard";
 
+const fetchAvisos = async () => {
+  const { data, error } = await supabase
+    .from("avisos")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as { id: string; mensagem: string; created_at: string; user_id: string }[];
+};
+
 const Index = () => {
   const { user, isAdmin, signOut } = useAuth();
   const queryClient = useQueryClient();
@@ -150,21 +159,32 @@ const Index = () => {
     return isDark;
   });
 
+  const [novoAviso, setNovoAviso] = useState("");
+
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["agendamentos"],
     queryFn: fetchAgendamentos,
     staleTime: 30_000,
   });
 
+  const { data: avisos = [] } = useQuery({
+    queryKey: ["avisos"],
+    queryFn: fetchAvisos,
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
-      .channel("agendamentos-realtime")
+      .channel("realtime-all")
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
         }, 1000);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "avisos" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["avisos"] });
       })
       .subscribe();
 
