@@ -752,8 +752,25 @@ const Index = () => {
               <div className="space-y-2">
                 {avisos.map((aviso) => (
                   <div key={aviso.id} className="rounded-lg bg-secondary p-3 flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{aviso.mensagem}</p>
+                    <div className="flex-1 min-w-0">
+                      {aviso.mensagem && (
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{aviso.mensagem}</p>
+                      )}
+                      {aviso.media_url && aviso.media_type === "video" && (
+                        <video
+                          src={aviso.media_url}
+                          controls
+                          className="mt-2 rounded-lg w-full max-h-64 object-contain"
+                        />
+                      )}
+                      {aviso.media_url && aviso.media_type !== "video" && (
+                        <img
+                          src={aviso.media_url}
+                          alt="Aviso"
+                          className="mt-2 rounded-lg w-full max-h-64 object-contain"
+                          loading="lazy"
+                        />
+                      )}
                       <p className="text-xs text-muted-foreground mt-1">
                         {format(new Date(aviso.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
