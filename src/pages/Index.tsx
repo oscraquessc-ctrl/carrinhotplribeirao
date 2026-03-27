@@ -720,9 +720,11 @@ const Index = () => {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (novoAviso.trim()) addAvisoMutation.mutate(novoAviso.trim());
+                  if (novoAviso.trim() || mediaUrl.trim()) {
+                    addAvisoMutation.mutate({ mensagem: novoAviso.trim(), media_url: mediaUrl.trim() || undefined });
+                  }
                 }}
-                className="flex gap-2"
+                className="space-y-2"
               >
                 <Textarea
                   value={novoAviso}
@@ -731,7 +733,13 @@ const Index = () => {
                   maxLength={500}
                   className="min-h-[60px] text-sm"
                 />
-                <Button type="submit" size="sm" className="shrink-0 self-end" disabled={addAvisoMutation.isPending}>
+                <Input
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
+                  placeholder="URL da imagem ou vídeo (opcional)"
+                  className="h-9 text-sm"
+                />
+                <Button type="submit" size="sm" className="w-full" disabled={addAvisoMutation.isPending}>
                   Publicar
                 </Button>
               </form>
