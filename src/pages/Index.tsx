@@ -572,18 +572,12 @@ const Index = () => {
                 <SelectItem value="Display">Display</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filtroHorario} onValueChange={setFiltroHorario}>
-              <SelectTrigger className="w-[160px] h-9 text-xs">
-                <Clock className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Horário" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os horários</SelectItem>
-                {HORARIOS.map((h) => (
-                  <SelectItem key={h} value={h}>{h}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              placeholder="Filtrar horário..."
+              value={filtroHorario === "todos" ? "" : filtroHorario}
+              onChange={(e) => setFiltroHorario(e.target.value || "todos")}
+              className="w-[160px] h-9 text-xs"
+            />
             <div className="ml-auto flex gap-1 border border-border rounded-md p-0.5">
               <Button
                 variant={displayMode === "grid" ? "default" : "ghost"}
