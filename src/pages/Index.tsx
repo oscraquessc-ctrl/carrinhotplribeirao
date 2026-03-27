@@ -767,7 +767,7 @@ const Index = () => {
                         <img
                           src={aviso.media_url}
                           alt="Aviso"
-                          className="mt-2 rounded-lg w-full max-h-64 object-contain"
+                          className="mt-2 rounded-lg w-full max-h-40 object-contain"
                           loading="lazy"
                         />
                       )}
