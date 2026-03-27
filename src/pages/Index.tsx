@@ -660,11 +660,7 @@ const Index = () => {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="h-8 w-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-            </div>
-          ) : agendamentosFiltrados.length === 0 ? (
+          {agendamentosFiltrados.length === 0 ? (
             <Card className="py-12 text-center border-dashed">
               <CardContent>
                 <p className="text-muted-foreground">
