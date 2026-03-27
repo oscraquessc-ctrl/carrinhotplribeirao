@@ -760,14 +760,14 @@ const Index = () => {
                         <video
                           src={aviso.media_url}
                           controls
-                          className="mt-2 rounded-lg w-full max-h-64 object-contain"
+                          className="mt-2 rounded-lg w-full max-h-40 object-contain"
                         />
                       )}
                       {aviso.media_url && aviso.media_type !== "video" && (
                         <img
                           src={aviso.media_url}
                           alt="Aviso"
-                          className="mt-2 rounded-lg w-full max-h-64 object-contain"
+                          className="mt-2 rounded-lg w-full max-h-40 object-contain"
                           loading="lazy"
                         />
                       )}
