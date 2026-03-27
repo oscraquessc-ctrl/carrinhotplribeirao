@@ -129,7 +129,7 @@ const fetchAvisos = async () => {
     .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return data as { id: string; mensagem: string; created_at: string; user_id: string }[];
+  return data as { id: string; mensagem: string; media_url: string | null; media_type: string | null; created_at: string; user_id: string }[];
 };
 
 const Index = () => {
@@ -160,6 +160,7 @@ const Index = () => {
   });
 
   const [novoAviso, setNovoAviso] = useState("");
+  const [mediaUrl, setMediaUrl] = useState("");
 
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["agendamentos"],
@@ -282,14 +283,26 @@ const Index = () => {
   });
 
   const addAvisoMutation = useMutation({
-    mutationFn: async (mensagem: string) => {
+    mutationFn: async ({ mensagem, media_url }: { mensagem: string; media_url?: string }) => {
       if (!user?.id) throw new Error("Não autenticado");
-      const { error } = await supabase.from("avisos").insert({ mensagem, user_id: user.id });
+      let media_type: string | null = null;
+      if (media_url) {
+        const lower = media_url.toLowerCase();
+        if (lower.match(/\.(mp4|webm|ogg|mov)(\?|$)/)) media_type = "video";
+        else media_type = "image";
+      }
+      const { error } = await supabase.from("avisos").insert({
+        mensagem,
+        media_url: media_url || null,
+        media_type,
+        user_id: user.id,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["avisos"] });
       setNovoAviso("");
+      setMediaUrl("");
       toast.success("Aviso publicado!");
     },
     onError: () => toast.error("Erro ao publicar aviso."),
@@ -647,11 +660,7 @@ const Index = () => {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="h-8 w-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-            </div>
-          ) : agendamentosFiltrados.length === 0 ? (
+          {agendamentosFiltrados.length === 0 ? (
             <Card className="py-12 text-center border-dashed">
               <CardContent>
                 <p className="text-muted-foreground">
@@ -711,9 +720,11 @@ const Index = () => {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (novoAviso.trim()) addAvisoMutation.mutate(novoAviso.trim());
+                  if (novoAviso.trim() || mediaUrl.trim()) {
+                    addAvisoMutation.mutate({ mensagem: novoAviso.trim(), media_url: mediaUrl.trim() || undefined });
+                  }
                 }}
-                className="flex gap-2"
+                className="space-y-2"
               >
                 <Textarea
                   value={novoAviso}
@@ -722,7 +733,13 @@ const Index = () => {
                   maxLength={500}
                   className="min-h-[60px] text-sm"
                 />
-                <Button type="submit" size="sm" className="shrink-0 self-end" disabled={addAvisoMutation.isPending}>
+                <Input
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
+                  placeholder="URL da imagem ou vídeo (opcional)"
+                  className="h-9 text-sm"
+                />
+                <Button type="submit" size="sm" className="w-full" disabled={addAvisoMutation.isPending}>
                   Publicar
                 </Button>
               </form>
@@ -735,8 +752,25 @@ const Index = () => {
               <div className="space-y-2">
                 {avisos.map((aviso) => (
                   <div key={aviso.id} className="rounded-lg bg-secondary p-3 flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{aviso.mensagem}</p>
+                    <div className="flex-1 min-w-0">
+                      {aviso.mensagem && (
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{aviso.mensagem}</p>
+                      )}
+                      {aviso.media_url && aviso.media_type === "video" && (
+                        <video
+                          src={aviso.media_url}
+                          controls
+                          className="mt-2 rounded-lg w-full max-h-64 object-contain"
+                        />
+                      )}
+                      {aviso.media_url && aviso.media_type !== "video" && (
+                        <img
+                          src={aviso.media_url}
+                          alt="Aviso"
+                          className="mt-2 rounded-lg w-full max-h-64 object-contain"
+                          loading="lazy"
+                        />
+                      )}
                       <p className="text-xs text-muted-foreground mt-1">
                         {format(new Date(aviso.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
