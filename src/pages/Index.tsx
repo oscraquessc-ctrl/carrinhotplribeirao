@@ -281,6 +281,32 @@ const Index = () => {
     onError: () => toast.error("Erro ao remover."),
   });
 
+  const addAvisoMutation = useMutation({
+    mutationFn: async (mensagem: string) => {
+      if (!user?.id) throw new Error("Não autenticado");
+      const { error } = await supabase.from("avisos").insert({ mensagem, user_id: user.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["avisos"] });
+      setNovoAviso("");
+      toast.success("Aviso publicado!");
+    },
+    onError: () => toast.error("Erro ao publicar aviso."),
+  });
+
+  const deleteAvisoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("avisos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["avisos"] });
+      toast.success("Aviso removido!");
+    },
+    onError: () => toast.error("Erro ao remover aviso."),
+  });
+
   const handleDelete = useCallback((id: string) => {
     deleteMutation.mutate(id);
   }, [deleteMutation]);
