@@ -376,6 +376,44 @@ const Index = () => {
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64">
+                <SheetHeader>
+                  <SheetTitle className="text-primary">Menu</SheetTitle>
+                </SheetHeader>
+                <nav className="mt-6 flex flex-col gap-2">
+                  <Button
+                    variant={activeSection === "form" ? "default" : "ghost"}
+                    className="justify-start gap-2"
+                    onClick={() => { setActiveSection("form"); setMenuOpen(false); }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Novo Agendamento
+                  </Button>
+                  <Button
+                    variant={activeSection === "agenda" ? "default" : "ghost"}
+                    className="justify-start gap-2"
+                    onClick={() => { setActiveSection("agenda"); setMenuOpen(false); }}
+                  >
+                    <Users className="h-4 w-4" />
+                    Agenda
+                  </Button>
+                  <Button
+                    variant={activeSection === "avisos" ? "default" : "ghost"}
+                    className="justify-start gap-2"
+                    onClick={() => { setActiveSection("avisos"); setMenuOpen(false); }}
+                  >
+                    <Megaphone className="h-4 w-4" />
+                    Quadro de Avisos
+                  </Button>
+                </nav>
+              </SheetContent>
+            </Sheet>
             <CalendarDays className="h-6 w-6 text-primary" />
             <h1 className="text-lg sm:text-xl font-bold text-foreground">Agenda dos Carrinhos</h1>
           </div>
