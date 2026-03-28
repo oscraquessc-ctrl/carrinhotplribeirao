@@ -301,6 +301,9 @@ const Index = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "avisos" }, () => {
         queryClient.invalidateQueries({ queryKey: ["avisos"] });
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "disponibilidade" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["disponibilidade"] });
+      })
       .subscribe();
 
     return () => {
