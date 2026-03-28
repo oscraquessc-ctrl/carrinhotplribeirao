@@ -162,6 +162,8 @@ const Index = () => {
 
   const [novoAviso, setNovoAviso] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+  const [activeSection, setActiveSection] = useState<"form" | "agenda" | "avisos">("form");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["agendamentos"],
