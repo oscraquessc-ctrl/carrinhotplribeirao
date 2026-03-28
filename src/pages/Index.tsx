@@ -855,7 +855,7 @@ const Index = () => {
                   <TabsContent key={dayIndex} value={String(dayIndex)} className="mt-3">
                     <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
                       {filtered.map((a) => (
-                        <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} />
+                        <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
                       ))}
                     </div>
                   </TabsContent>
