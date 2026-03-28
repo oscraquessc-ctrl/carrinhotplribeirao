@@ -411,6 +411,35 @@ const Index = () => {
                     <Megaphone className="h-4 w-4" />
                     Quadro de Avisos
                   </Button>
+
+                  <div className="border-t border-border my-2" />
+
+                  <Link to="/informacoes" onClick={() => setMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Informações
+                    </Button>
+                  </Link>
+
+                  {isAdmin && (
+                    <Link to="/admin" onClick={() => setMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start gap-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        Painel Admin
+                      </Button>
+                    </Link>
+                  )}
+
+                  <div className="border-t border-border my-2" />
+
+                  <Button
+                    variant="ghost"
+                    className="justify-start gap-2 text-destructive hover:text-destructive"
+                    onClick={() => { setMenuOpen(false); signOut(); }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                  </Button>
                 </nav>
               </SheetContent>
             </Sheet>
