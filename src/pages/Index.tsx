@@ -70,58 +70,102 @@ const LOCAL_COLORS: Record<string, string> = {
   Display: "bg-primary/15 text-primary border-primary/20",
 };
 
+type Disponibilidade = { id: string; user_id: string; agendamento_id: string; nome: string; created_at: string };
+
 const AgendamentoCard = memo(({
   a,
   isAdmin,
   onDelete,
+  currentUserId,
+  disponibilidades,
+  onDisponibilizar,
+  isDisponibilizando,
 }: {
   a: Agendamento;
   isAdmin: boolean;
   onDelete: (id: string) => void;
-}) => (
-  <Card className="group relative hover:shadow-md transition-shadow duration-200 border-border/60">
-    <CardContent className="p-4">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1.5">
-          <p className="font-bold text-foreground">{a.nome}</p>
-          <p className="text-sm text-muted-foreground">
-            {a.sem_dupla ? "Sem dupla" : a.nome_dupla ? `Dupla: ${a.nome_dupla}` : "Sem dupla informada"}
-          </p>
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${LOCAL_COLORS[a.local] || ""}`}>
-              {a.local}
-            </span>
-            {a.horario && (
-              <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
-                <Clock className="h-3 w-3" />{a.horario}
+  currentUserId?: string;
+  disponibilidades: Disponibilidade[];
+  onDisponibilizar: (agendamentoId: string, ownerUserId: string) => void;
+  isDisponibilizando: boolean;
+}) => {
+  const disps = disponibilidades.filter(d => d.agendamento_id === a.id);
+  const jaSeOfereceu = disps.some(d => d.user_id === currentUserId);
+  const isOwner = a.user_id === currentUserId;
+
+  return (
+    <Card className="group relative hover:shadow-md transition-shadow duration-200 border-border/60">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1.5">
+            <p className="font-bold text-foreground">{a.nome}</p>
+            <p className="text-sm text-muted-foreground">
+              {a.sem_dupla ? "Sem dupla" : a.nome_dupla ? `Dupla: ${a.nome_dupla}` : "Sem dupla informada"}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${LOCAL_COLORS[a.local] || ""}`}>
+                {a.local}
+              </span>
+              {a.horario && (
+                <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                  <Clock className="h-3 w-3" />{a.horario}
+                </span>
+              )}
+              {a.data && (
+                <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                  <CalendarIcon className="h-3 w-3" />{format(new Date(a.data + "T12:00:00"), "dd/MM/yyyy")}
+                </span>
+              )}
+              {a.toda_semana && (
+                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
+                  <Repeat className="h-3 w-3" />Toda semana
+                </span>
+              )}
+            </div>
+            {/* Disponibilidade */}
+            {a.sem_dupla && !isOwner && !jaSeOfereceu && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => onDisponibilizar(a.id, a.user_id)}
+                disabled={isDisponibilizando}
+              >
+                <Hand className="h-3.5 w-3.5" />
+                Estou disponível como dupla
+              </Button>
+            )}
+            {jaSeOfereceu && (
+              <span className="inline-flex items-center mt-2 rounded-full bg-primary/10 border border-primary/30 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
+                <Hand className="h-3 w-3" />Você se ofereceu como dupla
               </span>
             )}
-            {a.data && (
-              <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
-                <CalendarIcon className="h-3 w-3" />{format(new Date(a.data + "T12:00:00"), "dd/MM/yyyy")}
-              </span>
-            )}
-            {a.toda_semana && (
-              <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
-                <Repeat className="h-3 w-3" />Toda semana
-              </span>
+            {disps.length > 0 && isOwner && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs font-semibold text-primary">Duplas disponíveis:</p>
+                {disps.map(d => (
+                  <span key={d.id} className="inline-flex items-center rounded-full bg-accent/10 border border-accent/30 px-3 py-0.5 text-xs font-medium text-accent-foreground mr-1">
+                    {d.nome}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-destructive hover:bg-destructive/10"
+              onClick={() => onDelete(a.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        {isAdmin && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(a.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-    </CardContent>
-  </Card>
-));
+      </CardContent>
+    </Card>
+  );
+});
 AgendamentoCard.displayName = "AgendamentoCard";
 
 const fetchAvisos = async () => {
