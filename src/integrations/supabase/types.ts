@@ -80,19 +80,57 @@ export type Database = {
         }
         Relationships: []
       }
+      disponibilidade: {
+        Row: {
+          agendamento_id: string
+          created_at: string
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          agendamento_id: string
+          created_at?: string
+          id?: string
+          nome: string
+          user_id: string
+        }
+        Update: {
+          agendamento_id?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disponibilidade_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
+          email: string | null
+          genero: string | null
           id: string
           nome: string | null
         }
         Insert: {
           created_at?: string
+          email?: string | null
+          genero?: string | null
           id: string
           nome?: string | null
         }
         Update: {
           created_at?: string
+          email?: string | null
+          genero?: string | null
           id?: string
           nome?: string | null
         }

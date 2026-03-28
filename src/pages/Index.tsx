@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, CalendarIcon, MapPin, Users, Trash2, Plus, Clock, Repeat, LogOut, Filter, Sun, Moon, LayoutGrid, List, Megaphone, ShieldCheck, Menu } from "lucide-react";
+import { CalendarDays, CalendarIcon, MapPin, Users, Trash2, Plus, Clock, Repeat, LogOut, Filter, Sun, Moon, LayoutGrid, List, Megaphone, ShieldCheck, Menu, Hand } from "lucide-react";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -22,17 +22,6 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import coverImage from "@/assets/cover.webp";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -70,58 +59,102 @@ const LOCAL_COLORS: Record<string, string> = {
   Display: "bg-primary/15 text-primary border-primary/20",
 };
 
+type Disponibilidade = { id: string; user_id: string; agendamento_id: string; nome: string; created_at: string };
+
 const AgendamentoCard = memo(({
   a,
   isAdmin,
   onDelete,
+  currentUserId,
+  disponibilidades,
+  onDisponibilizar,
+  isDisponibilizando,
 }: {
   a: Agendamento;
   isAdmin: boolean;
   onDelete: (id: string) => void;
-}) => (
-  <Card className="group relative hover:shadow-md transition-shadow duration-200 border-border/60">
-    <CardContent className="p-4">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1.5">
-          <p className="font-bold text-foreground">{a.nome}</p>
-          <p className="text-sm text-muted-foreground">
-            {a.sem_dupla ? "Sem dupla" : a.nome_dupla ? `Dupla: ${a.nome_dupla}` : "Sem dupla informada"}
-          </p>
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${LOCAL_COLORS[a.local] || ""}`}>
-              {a.local}
-            </span>
-            {a.horario && (
-              <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
-                <Clock className="h-3 w-3" />{a.horario}
+  currentUserId?: string;
+  disponibilidades: Disponibilidade[];
+  onDisponibilizar: (agendamentoId: string, ownerUserId: string) => void;
+  isDisponibilizando: boolean;
+}) => {
+  const disps = disponibilidades.filter(d => d.agendamento_id === a.id);
+  const jaSeOfereceu = disps.some(d => d.user_id === currentUserId);
+  const isOwner = a.user_id === currentUserId;
+
+  return (
+    <Card className="group relative hover:shadow-md transition-shadow duration-200 border-border/60">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1.5">
+            <p className="font-bold text-foreground">{a.nome}</p>
+            <p className="text-sm text-muted-foreground">
+              {a.sem_dupla ? "Sem dupla" : a.nome_dupla ? `Dupla: ${a.nome_dupla}` : "Sem dupla informada"}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${LOCAL_COLORS[a.local] || ""}`}>
+                {a.local}
+              </span>
+              {a.horario && (
+                <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                  <Clock className="h-3 w-3" />{a.horario}
+                </span>
+              )}
+              {a.data && (
+                <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                  <CalendarIcon className="h-3 w-3" />{format(new Date(a.data + "T12:00:00"), "dd/MM/yyyy")}
+                </span>
+              )}
+              {a.toda_semana && (
+                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
+                  <Repeat className="h-3 w-3" />Toda semana
+                </span>
+              )}
+            </div>
+            {/* Disponibilidade */}
+            {a.sem_dupla && !isOwner && !jaSeOfereceu && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => onDisponibilizar(a.id, a.user_id)}
+                disabled={isDisponibilizando}
+              >
+                <Hand className="h-3.5 w-3.5" />
+                Estou disponível como dupla
+              </Button>
+            )}
+            {jaSeOfereceu && (
+              <span className="inline-flex items-center mt-2 rounded-full bg-primary/10 border border-primary/30 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
+                <Hand className="h-3 w-3" />Você se ofereceu como dupla
               </span>
             )}
-            {a.data && (
-              <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
-                <CalendarIcon className="h-3 w-3" />{format(new Date(a.data + "T12:00:00"), "dd/MM/yyyy")}
-              </span>
-            )}
-            {a.toda_semana && (
-              <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
-                <Repeat className="h-3 w-3" />Toda semana
-              </span>
+            {disps.length > 0 && isOwner && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs font-semibold text-primary">Duplas disponíveis:</p>
+                {disps.map(d => (
+                  <span key={d.id} className="inline-flex items-center rounded-full bg-accent/10 border border-accent/30 px-3 py-0.5 text-xs font-medium text-accent-foreground mr-1">
+                    {d.nome}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-destructive hover:bg-destructive/10"
+              onClick={() => onDelete(a.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        {isAdmin && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(a.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-    </CardContent>
-  </Card>
-));
+      </CardContent>
+    </Card>
+  );
+});
 AgendamentoCard.displayName = "AgendamentoCard";
 
 const fetchAvisos = async () => {
@@ -164,6 +197,26 @@ const Index = () => {
   const [mediaUrl, setMediaUrl] = useState("");
   const [activeSection, setActiveSection] = useState<"form" | "agenda" | "avisos">("form");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [perfilGenero, setPerfilGenero] = useState<string>("");
+
+  // Load & save profile (genero + email)
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from("profiles").select("genero, email").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (data?.genero) setPerfilGenero(data.genero);
+      // Auto-save email from auth if not set
+      if (!data?.email && user.email) {
+        supabase.from("profiles").update({ email: user.email }).eq("id", user.id);
+      }
+    });
+  }, [user?.id, user?.email]);
+
+  const saveGenero = useCallback(async (genero: string) => {
+    if (!user?.id) return;
+    setPerfilGenero(genero);
+    await supabase.from("profiles").update({ genero }).eq("id", user.id);
+    toast.success("Perfil atualizado!");
+  }, [user?.id]);
 
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["agendamentos"],
@@ -175,6 +228,73 @@ const Index = () => {
     queryKey: ["avisos"],
     queryFn: fetchAvisos,
     staleTime: 30_000,
+  });
+
+  const { data: disponibilidades = [] } = useQuery({
+    queryKey: ["disponibilidade"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("disponibilidade")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Disponibilidade[];
+    },
+    staleTime: 30_000,
+  });
+
+  const disponibilizarMutation = useMutation({
+    mutationFn: async ({ agendamentoId, ownerUserId }: { agendamentoId: string; ownerUserId: string }) => {
+      if (!user?.id) throw new Error("Não autenticado");
+      
+      // Get current user's profile name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome, genero")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      const nomeVoluntario = profile?.nome || user.email || "Alguém";
+      const genero = profile?.genero;
+      const titulo = genero === "feminino" ? "Uma irmã" : genero === "masculino" ? "Um irmão" : "Alguém";
+
+      // Insert disponibilidade
+      const { error } = await supabase
+        .from("disponibilidade")
+        .insert({
+          user_id: user.id,
+          agendamento_id: agendamentoId,
+          nome: nomeVoluntario,
+        });
+      if (error) throw error;
+
+      // Get owner's email to notify
+      const { data: ownerProfile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", ownerUserId)
+        .maybeSingle();
+
+      // Try to send notification (best effort)
+      if (ownerProfile?.email) {
+        try {
+          await supabase.functions.invoke("notify-dupla-disponivel", {
+            body: {
+              recipientEmail: ownerProfile.email,
+              voluntarioNome: nomeVoluntario,
+              titulo,
+            },
+          });
+        } catch {
+          // notification is best-effort
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["disponibilidade"] });
+      toast.success("Você se ofereceu como dupla! O publicador será notificado.");
+    },
+    onError: () => toast.error("Erro ao se disponibilizar. Tente novamente."),
   });
 
   useEffect(() => {
@@ -189,6 +309,9 @@ const Index = () => {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "avisos" }, () => {
         queryClient.invalidateQueries({ queryKey: ["avisos"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "disponibilidade" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["disponibilidade"] });
       })
       .subscribe();
 
@@ -411,6 +534,59 @@ const Index = () => {
                     <Megaphone className="h-4 w-4" />
                     Quadro de Avisos
                   </Button>
+
+                  <div className="border-t border-border my-2" />
+
+                  <Link to="/informacoes" onClick={() => setMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Informações
+                    </Button>
+                  </Link>
+
+                  {isAdmin && (
+                    <Link to="/admin" onClick={() => setMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start gap-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        Painel Admin
+                      </Button>
+                    </Link>
+                  )}
+
+                  <div className="border-t border-border my-2" />
+
+                  <div className="px-2 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground">Meu perfil</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={perfilGenero === "masculino" ? "default" : "outline"}
+                        className="flex-1 text-xs"
+                        onClick={() => saveGenero("masculino")}
+                      >
+                        Irmão
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={perfilGenero === "feminino" ? "default" : "outline"}
+                        className="flex-1 text-xs"
+                        onClick={() => saveGenero("feminino")}
+                      >
+                        Irmã
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border my-2" />
+
+                  <Button
+                    variant="ghost"
+                    className="justify-start gap-2 text-destructive hover:text-destructive"
+                    onClick={() => { setMenuOpen(false); signOut(); }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                  </Button>
                 </nav>
               </SheetContent>
             </Sheet>
@@ -432,33 +608,6 @@ const Index = () => {
                 <WhatsAppIcon className="h-4 w-4 text-primary" />
               </Button>
             </a>
-            <Link to="/informacoes">
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm">
-                <MapPin className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Informações</span>
-                <span className="sm:hidden">Info</span>
-              </Button>
-            </Link>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm">
-                  <LogOut className="h-3.5 w-3.5" />
-                  Sair
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Deseja sair?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Você será desconectado da sua conta e redirecionado para a página inicial.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => signOut()}>Sair</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </div>
         </div>
       </header>
@@ -730,7 +879,7 @@ const Index = () => {
               <TabsContent value="todos" className="mt-3">
                 <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
                   {agendamentosFiltrados.map((a) => (
-                    <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} />
+                    <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
                   ))}
                 </div>
               </TabsContent>
@@ -742,7 +891,7 @@ const Index = () => {
                   <TabsContent key={dayIndex} value={String(dayIndex)} className="mt-3">
                     <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
                       {filtered.map((a) => (
-                        <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} />
+                        <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
                       ))}
                     </div>
                   </TabsContent>
@@ -840,17 +989,6 @@ const Index = () => {
         </Card>
         )}
 
-        {/* Admin Link */}
-        {isAdmin && (
-          <div className="flex justify-center">
-            <Link to="/admin">
-              <Button variant="outline" className="gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                Painel Admin
-              </Button>
-            </Link>
-          </div>
-        )}
       </main>
     </div>
   );
