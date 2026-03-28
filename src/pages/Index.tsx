@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, type Agendamento } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, CalendarIcon, MapPin, Users, Trash2, Plus, Clock, Repeat, LogOut, Filter, Sun, Moon, LayoutGrid, List, Megaphone, ShieldCheck, Menu, Hand } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  CalendarDays, CalendarIcon, MapPin, Users, Trash2, Plus, Clock,
+  Repeat, LogOut, Filter, Sun, Moon, LayoutGrid, List, Megaphone,
+  ShieldCheck, Menu, Hand, Phone, Camera, User,
+} from "lucide-react";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 import { Link } from "react-router-dom";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription,
+} from "@/components/ui/sheet";
 import { z } from "zod";
 import { getDay, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,14 +30,10 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import coverImage from "@/assets/cover.webp";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
-const HORAS = Array.from({ length: 17 }, (_, i) => String(i + 7).padStart(2, "0")); // 07-23
+const HORAS = Array.from({ length: 17 }, (_, i) => String(i + 7).padStart(2, "0"));
 const MINUTOS = ["00", "15", "30", "45"];
 
 const agendamentoSchema = z.object({
@@ -47,7 +50,7 @@ const fetchAgendamentos = async (): Promise<Agendamento[]> => {
   const { data, error } = await supabase
     .from("agendamentos")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("data", { ascending: true });
   if (error) throw error;
   return data as Agendamento[];
 };
@@ -59,26 +62,20 @@ const LOCAL_COLORS: Record<string, string> = {
   Display: "bg-primary/15 text-primary border-primary/20",
 };
 
-type Disponibilidade = { id: string; user_id: string; agendamento_id: string; nome: string; created_at: string };
+type Disponibilidade = {
+  id: string; user_id: string; agendamento_id: string; nome: string; created_at: string;
+};
 
 const AgendamentoCard = memo(({
-  a,
-  isAdmin,
-  onDelete,
-  currentUserId,
-  disponibilidades,
-  onDisponibilizar,
-  isDisponibilizando,
+  a, isAdmin, onDelete, currentUserId, disponibilidades,
+  onDisponibilizar, isDisponibilizando,
 }: {
-  a: Agendamento;
-  isAdmin: boolean;
-  onDelete: (id: string) => void;
-  currentUserId?: string;
-  disponibilidades: Disponibilidade[];
+  a: Agendamento; isAdmin: boolean; onDelete: (id: string) => void;
+  currentUserId?: string; disponibilidades: Disponibilidade[];
   onDisponibilizar: (agendamentoId: string, ownerUserId: string) => void;
   isDisponibilizando: boolean;
 }) => {
-  const disps = disponibilidades.filter(d => d.agendamento_id === a.id);
+  const disps = useMemo(() => disponibilidades.filter(d => d.agendamento_id === a.id), [disponibilidades, a.id]);
   const jaSeOfereceu = disps.some(d => d.user_id === currentUserId);
   const isOwner = a.user_id === currentUserId;
 
@@ -86,14 +83,17 @@ const AgendamentoCard = memo(({
     <Card className="group relative hover:shadow-md transition-shadow duration-200 border-border/60">
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div className="space-y-1.5">
-            <p className="font-bold text-foreground">{a.nome}</p>
+          <div className="space-y-1.5 flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-primary shrink-0" />
+              <p className="font-bold text-foreground truncate">{a.nome}</p>
+            </div>
             <p className="text-sm text-muted-foreground">
-              {a.sem_dupla ? "Sem dupla" : a.nome_dupla ? `Dupla: ${a.nome_dupla}` : "Sem dupla informada"}
+              {a.sem_dupla ? "⚠️ Sem dupla" : a.nome_dupla ? `👥 Dupla: ${a.nome_dupla}` : "⚠️ Sem dupla informada"}
             </p>
             <div className="flex flex-wrap gap-1.5 mt-2">
               <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${LOCAL_COLORS[a.local] || ""}`}>
-                {a.local}
+                <MapPin className="h-3 w-3 mr-1" />{a.local}
               </span>
               {a.horario && (
                 <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
@@ -111,17 +111,14 @@ const AgendamentoCard = memo(({
                 </span>
               )}
             </div>
-            {/* Disponibilidade */}
             {a.sem_dupla && !isOwner && !jaSeOfereceu && (
               <Button
-                size="sm"
-                variant="outline"
+                size="sm" variant="outline"
                 className="mt-2 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
                 onClick={() => onDisponibilizar(a.id, a.user_id)}
                 disabled={isDisponibilizando}
               >
-                <Hand className="h-3.5 w-3.5" />
-                Estou disponível como dupla
+                <Hand className="h-3.5 w-3.5" />Estou disponível como dupla
               </Button>
             )}
             {jaSeOfereceu && (
@@ -142,8 +139,7 @@ const AgendamentoCard = memo(({
           </div>
           {isAdmin && (
             <Button
-              variant="ghost"
-              size="icon"
+              variant="ghost" size="icon"
               className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-destructive hover:bg-destructive/10"
               onClick={() => onDelete(a.id)}
             >
@@ -166,6 +162,14 @@ const fetchAvisos = async () => {
   return data as { id: string; mensagem: string; media_url: string | null; media_type: string | null; created_at: string; user_id: string }[];
 };
 
+type Profile = {
+  nome: string | null;
+  email: string | null;
+  genero: string | null;
+  telefone: string | null;
+  avatar_url: string | null;
+};
+
 const Index = () => {
   const { user, isAdmin, signOut } = useAuth();
   const queryClient = useQueryClient();
@@ -183,12 +187,11 @@ const Index = () => {
 
   const [filtroLocal, setFiltroLocal] = useState<string>("todos");
   const [filtroHorario, setFiltroHorario] = useState<string>("todos");
-  const [displayMode, setDisplayMode] = useState<"grid" | "list">(() => {
-    return (localStorage.getItem("displayMode") as "grid" | "list") || "grid";
-  });
+  const [displayMode, setDisplayMode] = useState<"grid" | "list">(() =>
+    (localStorage.getItem("displayMode") as "grid" | "list") || "grid"
+  );
   const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("theme");
-    const isDark = saved === "dark";
+    const isDark = localStorage.getItem("theme") === "dark";
     document.documentElement.classList.toggle("dark", isDark);
     return isDark;
   });
@@ -197,26 +200,54 @@ const Index = () => {
   const [mediaUrl, setMediaUrl] = useState("");
   const [activeSection, setActiveSection] = useState<"form" | "agenda" | "avisos">("form");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [perfilGenero, setPerfilGenero] = useState<string>("");
 
-  // Load & save profile (genero + email)
+  // Profile state
+  const [profile, setProfile] = useState<Profile>({ nome: null, email: null, genero: null, telefone: null, avatar_url: null });
+  const [editTelefone, setEditTelefone] = useState("");
+  const [editNome, setEditNome] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load profile
   useEffect(() => {
     if (!user?.id) return;
-    supabase.from("profiles").select("genero, email").eq("id", user.id).maybeSingle().then(({ data }) => {
-      if (data?.genero) setPerfilGenero(data.genero);
-      // Auto-save email from auth if not set
-      if (!data?.email && user.email) {
+    supabase.from("profiles").select("nome, email, genero, telefone, avatar_url").eq("id", user.id).maybeSingle().then(({ data: p }) => {
+      if (p) {
+        setProfile(p as Profile);
+        setEditTelefone(p.telefone || "");
+        setEditNome(p.nome || "");
+      }
+      if (!p?.email && user.email) {
         supabase.from("profiles").update({ email: user.email }).eq("id", user.id);
       }
     });
   }, [user?.id, user?.email]);
 
-  const saveGenero = useCallback(async (genero: string) => {
+  const saveProfile = useCallback(async (updates: Partial<Profile>) => {
     if (!user?.id) return;
-    setPerfilGenero(genero);
-    await supabase.from("profiles").update({ genero }).eq("id", user.id);
+    const newProfile = { ...profile, ...updates };
+    setProfile(newProfile);
+    await supabase.from("profiles").update(updates).eq("id", user.id);
     toast.success("Perfil atualizado!");
-  }, [user?.id]);
+  }, [user?.id, profile]);
+
+  const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Máximo 2MB.");
+      return;
+    }
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `avatars/${user.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      await saveProfile({ avatar_url: urlData.publicUrl + "?t=" + Date.now() });
+    } catch {
+      toast.error("Erro ao enviar foto. Tente novamente.");
+    }
+  }, [user?.id, saveProfile]);
 
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["agendamentos"],
@@ -246,88 +277,60 @@ const Index = () => {
   const disponibilizarMutation = useMutation({
     mutationFn: async ({ agendamentoId, ownerUserId }: { agendamentoId: string; ownerUserId: string }) => {
       if (!user?.id) throw new Error("Não autenticado");
-      
-      // Get current user's profile name
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("nome, genero")
-        .eq("id", user.id)
-        .maybeSingle();
-      
-      const nomeVoluntario = profile?.nome || user.email || "Alguém";
-      const genero = profile?.genero;
-      const titulo = genero === "feminino" ? "Uma irmã" : genero === "masculino" ? "Um irmão" : "Alguém";
+      const { data: prof } = await supabase.from("profiles").select("nome, genero").eq("id", user.id).maybeSingle();
+      const nomeVoluntario = prof?.nome || user.email || "Alguém";
+      const titulo = prof?.genero === "feminino" ? "Uma irmã" : prof?.genero === "masculino" ? "Um irmão" : "Alguém";
 
-      // Insert disponibilidade
-      const { error } = await supabase
-        .from("disponibilidade")
-        .insert({
-          user_id: user.id,
-          agendamento_id: agendamentoId,
-          nome: nomeVoluntario,
-        });
+      const { error } = await supabase.from("disponibilidade").insert({
+        user_id: user.id, agendamento_id: agendamentoId, nome: nomeVoluntario,
+      });
       if (error) throw error;
 
-      // Get owner's email to notify
-      const { data: ownerProfile } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("id", ownerUserId)
-        .maybeSingle();
-
-      // Try to send notification (best effort)
+      const { data: ownerProfile } = await supabase.from("profiles").select("email").eq("id", ownerUserId).maybeSingle();
       if (ownerProfile?.email) {
-        try {
-          await supabase.functions.invoke("notify-dupla-disponivel", {
-            body: {
-              recipientEmail: ownerProfile.email,
-              voluntarioNome: nomeVoluntario,
-              titulo,
-            },
-          });
-        } catch {
-          // notification is best-effort
-        }
+        supabase.functions.invoke("notify-dupla-disponivel", {
+          body: { recipientEmail: ownerProfile.email, voluntarioNome: nomeVoluntario, titulo },
+        }).catch(() => {});
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["disponibilidade"] });
-      toast.success("Você se ofereceu como dupla! O publicador será notificado.");
+      toast.success("Você se ofereceu como dupla!");
     },
-    onError: () => toast.error("Erro ao se disponibilizar. Tente novamente."),
+    onError: () => toast.error("Erro ao se disponibilizar."),
   });
 
+  // Realtime - debounced
   useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const timeouts: Record<string, ReturnType<typeof setTimeout>> = {};
     const channel = supabase
       .channel("realtime-all")
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
-        if (timeout) clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-        }, 1000);
+        clearTimeout(timeouts.ag);
+        timeouts.ag = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["agendamentos"] }), 1500);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "avisos" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["avisos"] });
+        clearTimeout(timeouts.av);
+        timeouts.av = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["avisos"] }), 1500);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "disponibilidade" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["disponibilidade"] });
+        clearTimeout(timeouts.di);
+        timeouts.di = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["disponibilidade"] }), 1500);
       })
       .subscribe();
 
     return () => {
-      if (timeout) clearTimeout(timeout);
+      Object.values(timeouts).forEach(clearTimeout);
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
 
   const agendamentosFiltrados = useMemo(
-    () =>
-      agendamentos.filter((a) => {
-        if (filtroLocal !== "todos" && a.local !== filtroLocal) return false;
-        if (filtroHorario !== "todos" && a.horario !== filtroHorario) return false;
-        return true;
-      }),
+    () => agendamentos.filter((a) => {
+      if (filtroLocal !== "todos" && a.local !== filtroLocal) return false;
+      if (filtroHorario !== "todos" && a.horario !== filtroHorario) return false;
+      return true;
+    }),
     [agendamentos, filtroLocal, filtroHorario]
   );
 
@@ -347,15 +350,10 @@ const Index = () => {
     mutationFn: async (formData: z.infer<typeof agendamentoSchema>) => {
       if (!user?.id) throw new Error("Usuário não autenticado");
       const baseRow = {
-        nome: formData.nome,
-        nome_dupla: formData.sem_dupla ? null : formData.nome_dupla || null,
-        sem_dupla: formData.sem_dupla,
-        local: formData.local,
-        horario: formData.horario,
-        toda_semana: formData.toda_semana,
-        user_id: user.id,
+        nome: formData.nome, nome_dupla: formData.sem_dupla ? null : formData.nome_dupla || null,
+        sem_dupla: formData.sem_dupla, local: formData.local, horario: formData.horario,
+        toda_semana: formData.toda_semana, user_id: user.id,
       };
-
       if (formData.toda_semana && formData.data) {
         const rows = [];
         for (let i = 0; i < 4; i++) {
@@ -367,32 +365,22 @@ const Index = () => {
         if (error) throw error;
       } else {
         const { error } = await supabase.from("agendamentos").insert({
-          ...baseRow,
-          data: formData.data || null,
+          ...baseRow, data: formData.data || null,
         });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-      setNome("");
-      setNomeDupla("");
-      setSemDupla(false);
-      setLocal("Areias");
-      setHoraInicio("09");
-      setMinInicio("00");
-      setHoraFim("11");
-      setMinFim("00");
-      setData(undefined);
-      setTodaSemana(false);
+      setNome(""); setNomeDupla(""); setSemDupla(false); setLocal("Areias");
+      setHoraInicio("09"); setMinInicio("00"); setHoraFim("11"); setMinFim("00");
+      setData(undefined); setTodaSemana(false);
       toast.success("Agendamento salvo com sucesso!");
     },
     onError: (error: any) => {
-      if (error?.code === "23505") {
-        toast.error("Esse horário já foi reservado nessa data e local! Escolha outro horário ou data.");
-      } else {
-        toast.error("Erro ao salvar. Tente novamente.");
-      }
+      toast.error(error?.code === "23505"
+        ? "Esse horário já foi reservado nessa data e local!"
+        : "Erro ao salvar. Tente novamente.");
     },
   });
 
@@ -401,10 +389,7 @@ const Index = () => {
       const { error } = await supabase.from("agendamentos").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-      toast.success("Agendamento removido!");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["agendamentos"] }); toast.success("Agendamento removido!"); },
     onError: () => toast.error("Erro ao remover."),
   });
 
@@ -413,22 +398,16 @@ const Index = () => {
       if (!user?.id) throw new Error("Não autenticado");
       let media_type: string | null = null;
       if (media_url) {
-        const lower = media_url.toLowerCase();
-        if (lower.match(/\.(mp4|webm|ogg|mov)(\?|$)/)) media_type = "video";
-        else media_type = "image";
+        media_type = media_url.toLowerCase().match(/\.(mp4|webm|ogg|mov)(\?|$)/) ? "video" : "image";
       }
       const { error } = await supabase.from("avisos").insert({
-        mensagem,
-        media_url: media_url || null,
-        media_type,
-        user_id: user.id,
+        mensagem, media_url: media_url || null, media_type, user_id: user.id,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["avisos"] });
-      setNovoAviso("");
-      setMediaUrl("");
+      setNovoAviso(""); setMediaUrl("");
       toast.success("Aviso publicado!");
     },
     onError: () => toast.error("Erro ao publicar aviso."),
@@ -439,51 +418,28 @@ const Index = () => {
       const { error } = await supabase.from("avisos").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["avisos"] });
-      toast.success("Aviso removido!");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["avisos"] }); toast.success("Aviso removido!"); },
     onError: () => toast.error("Erro ao remover aviso."),
   });
 
-  const handleDelete = useCallback((id: string) => {
-    deleteMutation.mutate(id);
-  }, [deleteMutation]);
+  const handleDelete = useCallback((id: string) => deleteMutation.mutate(id), [deleteMutation]);
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      const parsed = agendamentoSchema.safeParse({
-        nome,
-        nome_dupla: semDupla ? undefined : nomeDupla,
-        sem_dupla: semDupla,
-        local,
-        horario,
-        data: data ? format(data, "yyyy-MM-dd") : undefined,
-        toda_semana: todaSemana,
-      });
-      if (!parsed.success) {
-        toast.error(parsed.error.errors[0]?.message || "Dados inválidos");
-        return;
-      }
-
-      const dataFormatada = data ? format(data, "yyyy-MM-dd") : null;
-      const jaExiste = agendamentos.some(
-        (a) => a.local === local && a.horario === horario && a.data === dataFormatada
-      );
-
-      if (jaExiste && dataFormatada) {
-        toast.error("Esse horário já foi reservado nessa data e local! Escolha outro horário ou data.");
-        return;
-      }
-
-      addMutation.mutate(parsed.data);
-    },
-    [nome, nomeDupla, semDupla, local, horario, data, todaSemana, agendamentos, addMutation]
-  );
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = agendamentoSchema.safeParse({
+      nome, nome_dupla: semDupla ? undefined : nomeDupla, sem_dupla: semDupla,
+      local, horario, data: data ? format(data, "yyyy-MM-dd") : undefined, toda_semana: todaSemana,
+    });
+    if (!parsed.success) { toast.error(parsed.error.errors[0]?.message || "Dados inválidos"); return; }
+    const dataFormatada = data ? format(data, "yyyy-MM-dd") : null;
+    if (dataFormatada && agendamentos.some(a => a.local === local && a.horario === horario && a.data === dataFormatada)) {
+      toast.error("Esse horário já foi reservado nessa data e local!"); return;
+    }
+    addMutation.mutate(parsed.data);
+  }, [nome, nomeDupla, semDupla, local, horario, data, todaSemana, agendamentos, addMutation]);
 
   const toggleTheme = useCallback(() => {
-    setDarkMode((prev) => {
+    setDarkMode(prev => {
       const next = !prev;
       document.documentElement.classList.toggle("dark", next);
       localStorage.setItem("theme", next ? "dark" : "light");
@@ -492,6 +448,11 @@ const Index = () => {
   }, []);
 
   const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+  const initials = useMemo(() => {
+    const n = profile.nome || user?.email || "";
+    return n.split(" ").filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
+  }, [profile.nome, user?.email]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -505,87 +466,124 @@ const Index = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64">
+              <SheetContent side="left" className="w-72 flex flex-col" aria-describedby="menu-desc">
                 <SheetHeader>
                   <SheetTitle className="text-primary">Menu</SheetTitle>
+                  <SheetDescription id="menu-desc" className="sr-only">Navegação principal</SheetDescription>
                 </SheetHeader>
-                <nav className="mt-6 flex flex-col gap-2">
+
+                {/* Profile Section */}
+                <div className="mt-4 p-3 rounded-xl bg-muted/50 border border-border space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                      <Avatar className="h-14 w-14 border-2 border-primary/30">
+                        {profile.avatar_url ? (
+                          <AvatarImage src={profile.avatar_url} alt="Avatar" />
+                        ) : null}
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
+                          {initials || <User className="h-6 w-6" />}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1">
+                        <Camera className="h-3 w-3 text-primary-foreground" />
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <input
+                        className="font-semibold text-sm text-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none w-full truncate"
+                        value={editNome}
+                        onChange={e => setEditNome(e.target.value)}
+                        onBlur={() => { if (editNome !== profile.nome) saveProfile({ nome: editNome }); }}
+                        placeholder="Seu nome"
+                      />
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <input
+                      className="text-xs text-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none w-full"
+                      value={editTelefone}
+                      onChange={e => setEditTelefone(e.target.value)}
+                      onBlur={() => { if (editTelefone !== profile.telefone) saveProfile({ telefone: editTelefone }); }}
+                      placeholder="Seu telefone"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant={profile.genero === "masculino" ? "default" : "outline"}
+                      className="flex-1 text-xs h-8"
+                      onClick={() => saveProfile({ genero: "masculino" })}
+                    >
+                      Irmão
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={profile.genero === "feminino" ? "default" : "outline"}
+                      className="flex-1 text-xs h-8"
+                      onClick={() => saveProfile({ genero: "feminino" })}
+                    >
+                      Irmã
+                    </Button>
+                  </div>
+                </div>
+
+                <nav className="mt-4 flex flex-col gap-1.5 flex-1">
                   <Button
                     variant={activeSection === "form" ? "default" : "ghost"}
                     className="justify-start gap-2"
                     onClick={() => { setActiveSection("form"); setMenuOpen(false); }}
                   >
-                    <Plus className="h-4 w-4" />
-                    Novo Agendamento
+                    <Plus className="h-4 w-4" />Novo Agendamento
                   </Button>
                   <Button
                     variant={activeSection === "agenda" ? "default" : "ghost"}
                     className="justify-start gap-2"
                     onClick={() => { setActiveSection("agenda"); setMenuOpen(false); }}
                   >
-                    <Users className="h-4 w-4" />
-                    Agenda
+                    <Users className="h-4 w-4" />Agenda
                   </Button>
                   <Button
                     variant={activeSection === "avisos" ? "default" : "ghost"}
                     className="justify-start gap-2"
                     onClick={() => { setActiveSection("avisos"); setMenuOpen(false); }}
                   >
-                    <Megaphone className="h-4 w-4" />
-                    Quadro de Avisos
+                    <Megaphone className="h-4 w-4" />Quadro de Avisos
                   </Button>
 
                   <div className="border-t border-border my-2" />
 
                   <Link to="/informacoes" onClick={() => setMenuOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Informações
+                      <MapPin className="h-4 w-4" />Informações
                     </Button>
                   </Link>
 
                   {isAdmin && (
                     <Link to="/admin" onClick={() => setMenuOpen(false)}>
                       <Button variant="ghost" className="w-full justify-start gap-2">
-                        <ShieldCheck className="h-4 w-4" />
-                        Painel Admin
+                        <ShieldCheck className="h-4 w-4" />Painel Admin
                       </Button>
                     </Link>
                   )}
 
-                  <div className="border-t border-border my-2" />
-
-                  <div className="px-2 space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground">Meu perfil</p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant={perfilGenero === "masculino" ? "default" : "outline"}
-                        className="flex-1 text-xs"
-                        onClick={() => saveGenero("masculino")}
-                      >
-                        Irmão
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={perfilGenero === "feminino" ? "default" : "outline"}
-                        className="flex-1 text-xs"
-                        onClick={() => saveGenero("feminino")}
-                      >
-                        Irmã
-                      </Button>
-                    </div>
-                  </div>
+                  <div className="flex-1" />
 
                   <div className="border-t border-border my-2" />
-
                   <Button
                     variant="ghost"
                     className="justify-start gap-2 text-destructive hover:text-destructive"
                     onClick={() => { setMenuOpen(false); signOut(); }}
                   >
-                    <LogOut className="h-4 w-4" />
-                    Sair
+                    <LogOut className="h-4 w-4" />Sair
                   </Button>
                 </nav>
               </SheetContent>
@@ -594,13 +592,7 @@ const Index = () => {
             <h1 className="text-lg sm:text-xl font-bold text-foreground">Agenda dos Carrinhos</h1>
           </div>
           <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              title={darkMode ? "Fundo branco" : "Fundo preto"}
-              onClick={toggleTheme}
-            >
+            <Button variant="outline" size="icon" className="h-8 w-8" title={darkMode ? "Fundo branco" : "Fundo preto"} onClick={toggleTheme}>
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <a href="https://wa.me/5548988425163?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20a%20agenda%20do%20carrinho" target="_blank" rel="noopener noreferrer">
@@ -614,381 +606,233 @@ const Index = () => {
 
       {/* Cover Image */}
       <div className="relative w-full h-44 sm:h-56 md:h-64 overflow-hidden">
-        <img
-          src={coverImage}
-          alt="Carrinho TPL Ribeirão - Testemunho Público"
-          className="w-full h-full object-cover"
-          loading="eager"
-        />
+        <img src={coverImage} alt="Carrinho TPL Ribeirão" className="w-full h-full object-cover" loading="eager" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <div className="absolute bottom-4 left-0 right-0 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold drop-shadow-lg text-secondary-foreground">
-            Carrinho TPL Ribeirão
-          </h2>
-          <p className="text-sm drop-shadow text-secondary-foreground">
-            Agenda de Testemunho Público
-          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold drop-shadow-lg text-secondary-foreground">Carrinho TPL Ribeirão</h2>
+          <p className="text-sm drop-shadow text-secondary-foreground">Agenda de Testemunho Público</p>
         </div>
       </div>
 
       <main className="mx-auto max-w-4xl px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Form */}
         {activeSection === "form" && (
-        <Card className="border border-primary/15 shadow-md">
-          <CardHeader className="bg-primary/5 rounded-t-lg pb-3">
-            <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
-              <Plus className="h-5 w-5" />
-              CARRINHO TPL RIBEIRÃO
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-5">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="nome" className="font-semibold text-sm">Seu Nome</Label>
-                <Input
-                  id="nome"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Digite seu nome"
-                  maxLength={100}
-                  required
-                  className="h-10"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="semDupla"
-                  checked={semDupla}
-                  onCheckedChange={(v) => setSemDupla(v === true)}
-                />
-                <Label htmlFor="semDupla" className="cursor-pointer text-sm">Estou sem dupla</Label>
-              </div>
-
-              {!semDupla && (
+          <Card className="border border-primary/15 shadow-md">
+            <CardHeader className="bg-primary/5 rounded-t-lg pb-3">
+              <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
+                <Plus className="h-5 w-5" />CARRINHO TPL RIBEIRÃO
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="nomeDupla" className="font-semibold text-sm">Nome da Dupla</Label>
-                  <Input
-                    id="nomeDupla"
-                    value={nomeDupla}
-                    onChange={(e) => setNomeDupla(e.target.value)}
-                    placeholder="Digite o nome da dupla"
-                    maxLength={100}
-                    className="h-10"
-                  />
+                  <Label htmlFor="nome" className="font-semibold text-sm">Seu Nome</Label>
+                  <Input id="nome" value={nome} onChange={e => setNome(e.target.value)} placeholder="Digite seu nome" maxLength={100} required className="h-10" />
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <Label className="font-semibold text-sm">Local</Label>
-                <RadioGroup value={local} onValueChange={setLocal} className="flex gap-4 flex-wrap">
-                  {["Areias", "Ribeirão", "Display"].map((l) => (
-                    <div key={l} className="flex items-center gap-2">
-                      <RadioGroupItem value={l} id={l} />
-                      <Label htmlFor={l} className="cursor-pointer font-medium text-sm">{l}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-semibold text-sm flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  Horário
-                </Label>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground font-medium">De</span>
-                    <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shadow-sm">
-                      <select
-                        value={horaInicio}
-                        onChange={(e) => setHoraInicio(e.target.value)}
-                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
-                      >
-                        {HORAS.map((h) => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
-                      <span className="text-2xl font-bold text-primary animate-pulse">:</span>
-                      <select
-                        value={minInicio}
-                        onChange={(e) => setMinInicio(e.target.value)}
-                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
-                      >
-                        {MINUTOS.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="semDupla" checked={semDupla} onCheckedChange={v => setSemDupla(v === true)} />
+                  <Label htmlFor="semDupla" className="cursor-pointer text-sm">Estou sem dupla</Label>
+                </div>
+                {!semDupla && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nomeDupla" className="font-semibold text-sm">Nome da Dupla</Label>
+                    <Input id="nomeDupla" value={nomeDupla} onChange={e => setNomeDupla(e.target.value)} placeholder="Digite o nome da dupla" maxLength={100} className="h-10" />
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground font-medium">Até</span>
-                    <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shadow-sm">
-                      <select
-                        value={horaFim}
-                        onChange={(e) => setHoraFim(e.target.value)}
-                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
-                      >
-                        {HORAS.map((h) => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
-                      <span className="text-2xl font-bold text-primary animate-pulse">:</span>
-                      <select
-                        value={minFim}
-                        onChange={(e) => setMinFim(e.target.value)}
-                        className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14"
-                      >
-                        {MINUTOS.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
+                )}
+                <div className="space-y-2">
+                  <Label className="font-semibold text-sm">Local</Label>
+                  <RadioGroup value={local} onValueChange={setLocal} className="flex gap-4 flex-wrap">
+                    {["Areias", "Ribeirão", "Display"].map(l => (
+                      <div key={l} className="flex items-center gap-2">
+                        <RadioGroupItem value={l} id={l} />
+                        <Label htmlFor={l} className="cursor-pointer font-medium text-sm">{l}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold text-sm flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />Horário
+                  </Label>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground font-medium">De</span>
+                      <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shadow-sm">
+                        <select value={horaInicio} onChange={e => setHoraInicio(e.target.value)} className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14">
+                          {HORAS.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                        <span className="text-2xl font-bold text-primary">:</span>
+                        <select value={minInicio} onChange={e => setMinInicio(e.target.value)} className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14">
+                          {MINUTOS.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground font-medium">Até</span>
+                      <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shadow-sm">
+                        <select value={horaFim} onChange={e => setHoraFim(e.target.value)} className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14">
+                          {HORAS.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                        <span className="text-2xl font-bold text-primary">:</span>
+                        <select value={minFim} onChange={e => setMinFim(e.target.value)} className="bg-transparent text-2xl font-mono font-bold text-primary text-center appearance-none px-2 py-1.5 outline-none cursor-pointer w-14">
+                          {MINUTOS.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-semibold text-sm flex items-center gap-1.5">
-                  <CalendarIcon className="h-3.5 w-3.5" />
-                  Data
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-10",
-                        !data && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {data ? format(data, "PPP", { locale: ptBR }) : "Selecione uma data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={data}
-                      onSelect={setData}
-                      initialFocus
-                      locale={ptBR}
-                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="todaSemana"
-                  checked={todaSemana}
-                  onCheckedChange={(v) => setTodaSemana(v === true)}
-                />
-                <Label htmlFor="todaSemana" className="cursor-pointer flex items-center gap-1 text-sm">
-                  <Repeat className="h-3.5 w-3.5" />
-                  Toda semana
-                </Label>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full font-semibold h-11 text-sm sm:text-base"
-                disabled={addMutation.isPending}
-              >
-                {addMutation.isPending ? "Salvando..." : "Salvar Agendamento"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="space-y-2">
+                  <Label className="font-semibold text-sm flex items-center gap-1.5">
+                    <CalendarIcon className="h-3.5 w-3.5" />Data
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10", !data && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {data ? format(data, "PPP", { locale: ptBR }) : "Selecione uma data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={data} onSelect={setData} initialFocus locale={ptBR} disabled={date => date < new Date(new Date().setHours(0, 0, 0, 0))} className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="todaSemana" checked={todaSemana} onCheckedChange={v => setTodaSemana(v === true)} />
+                  <Label htmlFor="todaSemana" className="cursor-pointer flex items-center gap-1 text-sm">
+                    <Repeat className="h-3.5 w-3.5" />Toda semana
+                  </Label>
+                </div>
+                <Button type="submit" className="w-full font-semibold h-11 text-sm sm:text-base" disabled={addMutation.isPending}>
+                  {addMutation.isPending ? "Salvando..." : "Salvar Agendamento"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         )}
 
         {/* Agenda */}
         {activeSection === "agenda" && (
-        <div>
-          <h2 className="mb-4 flex items-center gap-2 text-lg sm:text-xl font-bold text-foreground">
-            <Users className="h-5 w-5 text-primary" />
-            Agenda ({agendamentosFiltrados.length})
-          </h2>
-
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <Select value={filtroLocal} onValueChange={setFiltroLocal}>
-              <SelectTrigger className="w-[140px] h-9 text-xs">
-                <Filter className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Local" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os locais</SelectItem>
-                <SelectItem value="Areias">Areias</SelectItem>
-                <SelectItem value="Ribeirão">Ribeirão</SelectItem>
-                <SelectItem value="Display">Display</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              placeholder="Filtrar horário..."
-              value={filtroHorario === "todos" ? "" : filtroHorario}
-              onChange={(e) => setFiltroHorario(e.target.value || "todos")}
-              className="w-[160px] h-9 text-xs"
-            />
-            <div className="ml-auto flex gap-1 border border-border rounded-md p-0.5">
-              <Button
-                variant={displayMode === "grid" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => { setDisplayMode("grid"); localStorage.setItem("displayMode", "grid"); }}
-                title="Grade"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={displayMode === "list" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => { setDisplayMode("list"); localStorage.setItem("displayMode", "list"); }}
-                title="Lista"
-              >
-                <List className="h-4 w-4" />
-              </Button>
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 text-lg sm:text-xl font-bold text-foreground">
+              <Users className="h-5 w-5 text-primary" />Agenda ({agendamentosFiltrados.length})
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <Select value={filtroLocal} onValueChange={setFiltroLocal}>
+                <SelectTrigger className="w-[140px] h-9 text-xs">
+                  <Filter className="h-3 w-3 mr-1" /><SelectValue placeholder="Local" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os locais</SelectItem>
+                  <SelectItem value="Areias">Areias</SelectItem>
+                  <SelectItem value="Ribeirão">Ribeirão</SelectItem>
+                  <SelectItem value="Display">Display</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input placeholder="Filtrar horário..." value={filtroHorario === "todos" ? "" : filtroHorario} onChange={e => setFiltroHorario(e.target.value || "todos")} className="w-[160px] h-9 text-xs" />
+              <div className="ml-auto flex gap-1 border border-border rounded-md p-0.5">
+                <Button variant={displayMode === "grid" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => { setDisplayMode("grid"); localStorage.setItem("displayMode", "grid"); }} title="Grade">
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button variant={displayMode === "list" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => { setDisplayMode("list"); localStorage.setItem("displayMode", "list"); }} title="Lista">
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {agendamentosFiltrados.length === 0 ? (
-            <Card className="py-12 text-center border-dashed">
-              <CardContent>
-                <p className="text-muted-foreground">
-                  {agendamentos.length === 0 ? "Nenhum agendamento ainda. Seja o primeiro!" : "Nenhum resultado para os filtros selecionados."}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Tabs defaultValue="todos" className="w-full">
-              <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
-                <TabsTrigger value="todos" className="text-xs">Todos</TabsTrigger>
-                {DIAS.map((dia, i) => {
-                  const count = dayGroups[i]?.length || 0;
-                  if (count === 0) return null;
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : agendamentosFiltrados.length === 0 ? (
+              <Card className="py-12 text-center border-dashed">
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    {agendamentos.length === 0 ? "Nenhum agendamento ainda. Seja o primeiro!" : "Nenhum resultado para os filtros."}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Tabs defaultValue="todos" className="w-full">
+                <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
+                  <TabsTrigger value="todos" className="text-xs">Todos</TabsTrigger>
+                  {DIAS.map((dia, i) => {
+                    const count = dayGroups[i]?.length || 0;
+                    if (count === 0) return null;
+                    return <TabsTrigger key={dia} value={String(i)} className="text-xs">{dia} ({count})</TabsTrigger>;
+                  })}
+                </TabsList>
+
+                <TabsContent value="todos" className="mt-3">
+                  <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
+                    {agendamentosFiltrados.map(a => (
+                      <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
+                    ))}
+                  </div>
+                </TabsContent>
+
+                {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => {
+                  const filtered = dayGroups[dayIndex];
+                  if (!filtered?.length) return null;
                   return (
-                    <TabsTrigger key={dia} value={String(i)} className="text-xs">
-                      {dia} ({count})
-                    </TabsTrigger>
+                    <TabsContent key={dayIndex} value={String(dayIndex)} className="mt-3">
+                      <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
+                        {filtered.map(a => (
+                          <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
+                        ))}
+                      </div>
+                    </TabsContent>
                   );
                 })}
-              </TabsList>
-
-              <TabsContent value="todos" className="mt-3">
-                <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
-                  {agendamentosFiltrados.map((a) => (
-                    <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
-                  ))}
-                </div>
-              </TabsContent>
-
-              {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
-                const filtered = dayGroups[dayIndex];
-                if (!filtered || filtered.length === 0) return null;
-                return (
-                  <TabsContent key={dayIndex} value={String(dayIndex)} className="mt-3">
-                    <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
-                      {filtered.map((a) => (
-                        <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
-                      ))}
-                    </div>
-                  </TabsContent>
-                );
-              })}
-            </Tabs>
-          )}
-        </div>
+              </Tabs>
+            )}
+          </div>
         )}
 
         {/* Quadro de Avisos */}
         {activeSection === "avisos" && (
-        <Card className="border border-primary/30 shadow-md">
-          <CardHeader className="bg-primary/10 rounded-t-lg pb-3">
-            <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
-              <Megaphone className="h-5 w-5 text-primary" />
-              Quadro de Avisos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-3">
-            {isAdmin && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (novoAviso.trim() || mediaUrl.trim()) {
-                    addAvisoMutation.mutate({ mensagem: novoAviso.trim(), media_url: mediaUrl.trim() || undefined });
-                  }
-                }}
-                className="space-y-2"
-              >
-                <Textarea
-                  value={novoAviso}
-                  onChange={(e) => setNovoAviso(e.target.value)}
-                  placeholder="Escreva um aviso..."
-                  maxLength={500}
-                  className="min-h-[60px] text-sm"
-                />
-                <Input
-                  value={mediaUrl}
-                  onChange={(e) => setMediaUrl(e.target.value)}
-                  placeholder="URL da imagem ou vídeo (opcional)"
-                  className="h-9 text-sm"
-                />
-                <Button type="submit" size="sm" className="w-full" disabled={addAvisoMutation.isPending}>
-                  Publicar
-                </Button>
-              </form>
-            )}
-            {avisos.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum aviso no momento.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {avisos.map((aviso) => (
-                  <div key={aviso.id} className="rounded-lg bg-secondary p-3 flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      {aviso.mensagem && (
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{aviso.mensagem}</p>
+          <Card className="border border-primary/30 shadow-md">
+            <CardHeader className="bg-primary/10 rounded-t-lg pb-3">
+              <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
+                <Megaphone className="h-5 w-5 text-primary" />Quadro de Avisos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              {isAdmin && (
+                <form onSubmit={e => { e.preventDefault(); if (novoAviso.trim() || mediaUrl.trim()) addAvisoMutation.mutate({ mensagem: novoAviso.trim(), media_url: mediaUrl.trim() || undefined }); }} className="space-y-2">
+                  <Textarea value={novoAviso} onChange={e => setNovoAviso(e.target.value)} placeholder="Escreva um aviso..." maxLength={500} className="min-h-[60px] text-sm" />
+                  <Input value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} placeholder="URL da imagem ou vídeo (opcional)" className="h-9 text-sm" />
+                  <Button type="submit" size="sm" className="w-full" disabled={addAvisoMutation.isPending}>Publicar</Button>
+                </form>
+              )}
+              {avisos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum aviso no momento.</p>
+              ) : (
+                <div className="space-y-2">
+                  {avisos.map(aviso => (
+                    <div key={aviso.id} className="rounded-lg bg-secondary p-3 flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {aviso.mensagem && <p className="text-sm text-foreground whitespace-pre-wrap">{aviso.mensagem}</p>}
+                        {aviso.media_url && aviso.media_type === "video" && (
+                          <video src={aviso.media_url} controls className="mt-2 rounded-lg w-full max-h-40 object-contain" />
+                        )}
+                        {aviso.media_url && aviso.media_type !== "video" && (
+                          <img src={aviso.media_url} alt="Aviso" className="mt-2 rounded-lg w-full max-h-40 object-contain" loading="lazy" />
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">{format(new Date(aviso.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                      </div>
+                      {isAdmin && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" onClick={() => deleteAvisoMutation.mutate(aviso.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       )}
-                      {aviso.media_url && aviso.media_type === "video" && (
-                        <video
-                          src={aviso.media_url}
-                          controls
-                          className="mt-2 rounded-lg w-full max-h-40 object-contain"
-                        />
-                      )}
-                      {aviso.media_url && aviso.media_type !== "video" && (
-                        <img
-                          src={aviso.media_url}
-                          alt="Aviso"
-                          className="mt-2 rounded-lg w-full max-h-40 object-contain"
-                          loading="lazy"
-                        />
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(aviso.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
                     </div>
-                    {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10"
-                        onClick={() => deleteAvisoMutation.mutate(aviso.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
-
       </main>
     </div>
   );
