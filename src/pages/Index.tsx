@@ -208,6 +208,26 @@ const Index = () => {
   const [mediaUrl, setMediaUrl] = useState("");
   const [activeSection, setActiveSection] = useState<"form" | "agenda" | "avisos">("form");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [perfilGenero, setPerfilGenero] = useState<string>("");
+
+  // Load & save profile (genero + email)
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from("profiles").select("genero, email").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (data?.genero) setPerfilGenero(data.genero);
+      // Auto-save email from auth if not set
+      if (!data?.email && user.email) {
+        supabase.from("profiles").update({ email: user.email }).eq("id", user.id);
+      }
+    });
+  }, [user?.id, user?.email]);
+
+  const saveGenero = useCallback(async (genero: string) => {
+    if (!user?.id) return;
+    setPerfilGenero(genero);
+    await supabase.from("profiles").update({ genero }).eq("id", user.id);
+    toast.success("Perfil atualizado!");
+  }, [user?.id]);
 
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["agendamentos"],
