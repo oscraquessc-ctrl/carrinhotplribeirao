@@ -484,6 +484,7 @@ const Index = () => {
 
       <main className="mx-auto max-w-4xl px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Form */}
+        {activeSection === "form" && (
         <Card className="border border-primary/15 shadow-md">
           <CardHeader className="bg-primary/5 rounded-t-lg pb-3">
             <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
