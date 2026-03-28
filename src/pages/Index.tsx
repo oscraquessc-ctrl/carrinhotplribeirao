@@ -566,6 +566,30 @@ const Index = () => {
 
                   <div className="border-t border-border my-2" />
 
+                  <div className="px-2 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground">Meu perfil</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={perfilGenero === "masculino" ? "default" : "outline"}
+                        className="flex-1 text-xs"
+                        onClick={() => saveGenero("masculino")}
+                      >
+                        Irmão
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={perfilGenero === "feminino" ? "default" : "outline"}
+                        className="flex-1 text-xs"
+                        onClick={() => saveGenero("feminino")}
+                      >
+                        Irmã
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border my-2" />
+
                   <Button
                     variant="ghost"
                     className="justify-start gap-2 text-destructive hover:text-destructive"
