@@ -751,7 +751,10 @@ const Index = () => {
             </Tabs>
           )}
         </div>
+        )}
+
         {/* Quadro de Avisos */}
+        {activeSection === "avisos" && (
         <Card className="border border-primary/30 shadow-md">
           <CardHeader className="bg-primary/10 rounded-t-lg pb-3">
             <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
