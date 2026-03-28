@@ -842,17 +842,6 @@ const Index = () => {
         </Card>
         )}
 
-        {/* Admin Link */}
-        {isAdmin && (
-          <div className="flex justify-center">
-            <Link to="/admin">
-              <Button variant="outline" className="gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                Painel Admin
-              </Button>
-            </Link>
-          </div>
-        )}
       </main>
     </div>
   );
