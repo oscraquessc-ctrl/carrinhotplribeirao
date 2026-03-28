@@ -838,6 +838,7 @@ const Index = () => {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Admin Link */}
         {isAdmin && (
