@@ -221,6 +221,73 @@ const Index = () => {
     staleTime: 30_000,
   });
 
+  const { data: disponibilidades = [] } = useQuery({
+    queryKey: ["disponibilidade"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("disponibilidade")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Disponibilidade[];
+    },
+    staleTime: 30_000,
+  });
+
+  const disponibilizarMutation = useMutation({
+    mutationFn: async ({ agendamentoId, ownerUserId }: { agendamentoId: string; ownerUserId: string }) => {
+      if (!user?.id) throw new Error("Não autenticado");
+      
+      // Get current user's profile name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome, genero")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      const nomeVoluntario = profile?.nome || user.email || "Alguém";
+      const genero = profile?.genero;
+      const titulo = genero === "feminino" ? "Uma irmã" : genero === "masculino" ? "Um irmão" : "Alguém";
+
+      // Insert disponibilidade
+      const { error } = await supabase
+        .from("disponibilidade")
+        .insert({
+          user_id: user.id,
+          agendamento_id: agendamentoId,
+          nome: nomeVoluntario,
+        });
+      if (error) throw error;
+
+      // Get owner's email to notify
+      const { data: ownerProfile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", ownerUserId)
+        .maybeSingle();
+
+      // Try to send notification (best effort)
+      if (ownerProfile?.email) {
+        try {
+          await supabase.functions.invoke("notify-dupla-disponivel", {
+            body: {
+              recipientEmail: ownerProfile.email,
+              voluntarioNome: nomeVoluntario,
+              titulo,
+            },
+          });
+        } catch {
+          // notification is best-effort
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["disponibilidade"] });
+      toast.success("Você se ofereceu como dupla! O publicador será notificado.");
+    },
+    onError: () => toast.error("Erro ao se disponibilizar. Tente novamente."),
+  });
+
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
