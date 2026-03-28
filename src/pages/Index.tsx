@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, CalendarIcon, MapPin, Users, Trash2, Plus, Clock, Repeat, LogOut, Filter, Sun, Moon, LayoutGrid, List, Megaphone, ShieldCheck, Menu } from "lucide-react";
+import { CalendarDays, CalendarIcon, MapPin, Users, Trash2, Plus, Clock, Repeat, LogOut, Filter, Sun, Moon, LayoutGrid, List, Megaphone, ShieldCheck, Menu, Hand } from "lucide-react";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
