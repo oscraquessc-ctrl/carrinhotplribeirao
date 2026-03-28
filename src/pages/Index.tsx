@@ -462,7 +462,6 @@ const Index = () => {
               </Button>
             </a>
           </div>
-          </div>
         </div>
       </header>
 
