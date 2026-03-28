@@ -461,33 +461,7 @@ const Index = () => {
                 <WhatsAppIcon className="h-4 w-4 text-primary" />
               </Button>
             </a>
-            <Link to="/informacoes">
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm">
-                <MapPin className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Informações</span>
-                <span className="sm:hidden">Info</span>
-              </Button>
-            </Link>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm">
-                  <LogOut className="h-3.5 w-3.5" />
-                  Sair
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Deseja sair?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Você será desconectado da sua conta e redirecionado para a página inicial.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => signOut()}>Sair</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          </div>
           </div>
         </div>
       </header>
