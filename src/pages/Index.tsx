@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   CalendarDays, CalendarIcon, MapPin, Users, Trash2, Plus, Clock,
   Repeat, LogOut, Filter, Sun, Moon, LayoutGrid, List, Megaphone,
-  ShieldCheck, Menu, Hand, Phone, Camera, User,
+  ShieldCheck, Menu, Hand, Phone, Camera, User, AlertTriangle,
 } from "lucide-react";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 import { Link } from "react-router-dom";
@@ -35,6 +35,8 @@ import {
 
 const HORAS = Array.from({ length: 17 }, (_, i) => String(i + 7).padStart(2, "0"));
 const MINUTOS = ["00", "15", "30", "45"];
+const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const LOCAIS = ["Areias", "Ribeirão", "Display"];
 
 const agendamentoSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -45,15 +47,6 @@ const agendamentoSchema = z.object({
   data: z.string().optional(),
   toda_semana: z.boolean(),
 });
-
-const fetchAgendamentos = async (): Promise<Agendamento[]> => {
-  const { data, error } = await supabase
-    .from("agendamentos")
-    .select("*")
-    .order("data", { ascending: true });
-  if (error) throw error;
-  return data as Agendamento[];
-};
 
 const LOCAL_COLORS: Record<string, string> = {
   Carrinho: "bg-primary/10 text-primary border-primary/30",
@@ -66,6 +59,15 @@ type Disponibilidade = {
   id: string; user_id: string; agendamento_id: string; nome: string; created_at: string;
 };
 
+type Profile = {
+  nome: string | null;
+  email: string | null;
+  genero: string | null;
+  telefone: string | null;
+  avatar_url: string | null;
+};
+
+// ── Agenda Card ──────────────────────────────────────────────
 const AgendamentoCard = memo(({
   a, isAdmin, onDelete, currentUserId, disponibilidades,
   onDisponibilizar, isDisponibilizando,
@@ -78,43 +80,64 @@ const AgendamentoCard = memo(({
   const disps = useMemo(() => disponibilidades.filter(d => d.agendamento_id === a.id), [disponibilidades, a.id]);
   const jaSeOfereceu = disps.some(d => d.user_id === currentUserId);
   const isOwner = a.user_id === currentUserId;
+  const semDupla = a.sem_dupla || (!a.nome_dupla && !a.sem_dupla);
 
   return (
-    <Card className="group relative hover:shadow-md transition-shadow duration-200 border-border/60">
+    <Card className={cn(
+      "group relative transition-all duration-200 border-border/60",
+      "hover:shadow-md hover:border-primary/20",
+      semDupla && "border-l-4 border-l-orange-400"
+    )}>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1.5 flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-primary shrink-0" />
-              <p className="font-bold text-foreground truncate">{a.nome}</p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-2 flex-1 min-w-0">
+            {/* Nome e dupla */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-primary shrink-0" />
+                <p className="font-bold text-foreground truncate">{a.nome}</p>
+              </div>
+              {semDupla ? (
+                <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span className="text-sm font-medium">Sem dupla</span>
+                </div>
+              ) : a.nome_dupla ? (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Users className="h-3.5 w-3.5 shrink-0" />
+                  <span className="text-sm">Dupla: <span className="font-medium text-foreground">{a.nome_dupla}</span></span>
+                </div>
+              ) : null}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {a.sem_dupla ? "⚠️ Sem dupla" : a.nome_dupla ? `👥 Dupla: ${a.nome_dupla}` : "⚠️ Sem dupla informada"}
-            </p>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${LOCAL_COLORS[a.local] || ""}`}>
-                <MapPin className="h-3 w-3 mr-1" />{a.local}
+
+            {/* Info badges */}
+            <div className="flex flex-wrap gap-1.5">
+              <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold gap-1", LOCAL_COLORS[a.local] || "")}>
+                <MapPin className="h-3 w-3" />{a.local}
               </span>
               {a.horario && (
-                <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                <span className="inline-flex items-center rounded-full border border-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground gap-1">
                   <Clock className="h-3 w-3" />{a.horario}
                 </span>
               )}
               {a.data && (
-                <span className="inline-flex items-center rounded-full border border-muted px-3 py-0.5 text-xs font-medium text-muted-foreground gap-1">
-                  <CalendarIcon className="h-3 w-3" />{format(new Date(a.data + "T12:00:00"), "dd/MM/yyyy")}
+                <span className="inline-flex items-center rounded-full border border-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                  <CalendarIcon className="h-3 w-3" />
+                  {format(new Date(a.data + "T12:00:00"), "dd/MM/yyyy")}
                 </span>
               )}
               {a.toda_semana && (
-                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
-                  <Repeat className="h-3 w-3" />Toda semana
+                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary gap-1">
+                  <Repeat className="h-3 w-3" />Semanal
                 </span>
               )}
             </div>
+
+            {/* Disponibilidade button */}
             {a.sem_dupla && !isOwner && !jaSeOfereceu && (
               <Button
                 size="sm" variant="outline"
-                className="mt-2 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                className="mt-1 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
                 onClick={() => onDisponibilizar(a.id, a.user_id)}
                 disabled={isDisponibilizando}
               >
@@ -122,25 +145,27 @@ const AgendamentoCard = memo(({
               </Button>
             )}
             {jaSeOfereceu && (
-              <span className="inline-flex items-center mt-2 rounded-full bg-primary/10 border border-primary/30 px-3 py-0.5 text-xs font-semibold text-primary gap-1">
-                <Hand className="h-3 w-3" />Você se ofereceu como dupla
+              <span className="inline-flex items-center mt-1 rounded-full bg-primary/10 border border-primary/30 px-2.5 py-0.5 text-xs font-semibold text-primary gap-1">
+                <Hand className="h-3 w-3" />Você se ofereceu
               </span>
             )}
             {disps.length > 0 && isOwner && (
-              <div className="mt-2 space-y-1">
+              <div className="mt-1 space-y-1">
                 <p className="text-xs font-semibold text-primary">Duplas disponíveis:</p>
-                {disps.map(d => (
-                  <span key={d.id} className="inline-flex items-center rounded-full bg-accent/10 border border-accent/30 px-3 py-0.5 text-xs font-medium text-accent-foreground mr-1">
-                    {d.nome}
-                  </span>
-                ))}
+                <div className="flex flex-wrap gap-1">
+                  {disps.map(d => (
+                    <span key={d.id} className="inline-flex items-center rounded-full bg-accent/10 border border-accent/30 px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
+                      {d.nome}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
           {isAdmin && (
             <Button
               variant="ghost" size="icon"
-              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-destructive hover:bg-destructive/10"
+              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10 shrink-0"
               onClick={() => onDelete(a.id)}
             >
               <Trash2 className="h-4 w-4" />
@@ -153,26 +178,12 @@ const AgendamentoCard = memo(({
 });
 AgendamentoCard.displayName = "AgendamentoCard";
 
-const fetchAvisos = async () => {
-  const { data, error } = await supabase
-    .from("avisos")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data as { id: string; mensagem: string; media_url: string | null; media_type: string | null; created_at: string; user_id: string }[];
-};
-
-type Profile = {
-  nome: string | null;
-  email: string | null;
-  genero: string | null;
-  telefone: string | null;
-  avatar_url: string | null;
-};
-
+// ── Main Component ───────────────────────────────────────────
 const Index = () => {
   const { user, isAdmin, signOut } = useAuth();
   const queryClient = useQueryClient();
+
+  // Form state
   const [nome, setNome] = useState("");
   const [nomeDupla, setNomeDupla] = useState("");
   const [semDupla, setSemDupla] = useState(false);
@@ -185,8 +196,8 @@ const Index = () => {
   const [data, setData] = useState<Date>();
   const [todaSemana, setTodaSemana] = useState(false);
 
+  // Filters
   const [filtroLocal, setFiltroLocal] = useState<string>("todos");
-  const [filtroHorario, setFiltroHorario] = useState<string>("todos");
   const [displayMode, setDisplayMode] = useState<"grid" | "list">(() =>
     (localStorage.getItem("displayMode") as "grid" | "list") || "grid"
   );
@@ -196,8 +207,11 @@ const Index = () => {
     return isDark;
   });
 
+  // Avisos
   const [novoAviso, setNovoAviso] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+
+  // UI state
   const [activeSection, setActiveSection] = useState<"form" | "agenda" | "avisos">("form");
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -207,7 +221,7 @@ const Index = () => {
   const [editNome, setEditNome] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load profile
+  // ── Profile loading ────────────────────────────────────────
   useEffect(() => {
     if (!user?.id) return;
     supabase.from("profiles").select("nome, email, genero, telefone, avatar_url").eq("id", user.id).maybeSingle().then(({ data: p }) => {
@@ -233,10 +247,7 @@ const Index = () => {
   const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Imagem muito grande. Máximo 2MB.");
-      return;
-    }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Imagem muito grande. Máximo 2MB."); return; }
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `avatars/${user.id}.${ext}`;
@@ -249,15 +260,30 @@ const Index = () => {
     }
   }, [user?.id, saveProfile]);
 
+  // ── Data queries ───────────────────────────────────────────
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["agendamentos"],
-    queryFn: fetchAgendamentos,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .select("*")
+        .order("data", { ascending: true });
+      if (error) throw error;
+      return data as Agendamento[];
+    },
     staleTime: 30_000,
   });
 
   const { data: avisos = [] } = useQuery({
     queryKey: ["avisos"],
-    queryFn: fetchAvisos,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("avisos")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as { id: string; mensagem: string; media_url: string | null; media_type: string | null; created_at: string; user_id: string }[];
+    },
     staleTime: 30_000,
   });
 
@@ -274,18 +300,17 @@ const Index = () => {
     staleTime: 30_000,
   });
 
+  // ── Mutations ──────────────────────────────────────────────
   const disponibilizarMutation = useMutation({
     mutationFn: async ({ agendamentoId, ownerUserId }: { agendamentoId: string; ownerUserId: string }) => {
       if (!user?.id) throw new Error("Não autenticado");
       const { data: prof } = await supabase.from("profiles").select("nome, genero").eq("id", user.id).maybeSingle();
       const nomeVoluntario = prof?.nome || user.email || "Alguém";
       const titulo = prof?.genero === "feminino" ? "Uma irmã" : prof?.genero === "masculino" ? "Um irmão" : "Alguém";
-
       const { error } = await supabase.from("disponibilidade").insert({
         user_id: user.id, agendamento_id: agendamentoId, nome: nomeVoluntario,
       });
       if (error) throw error;
-
       const { data: ownerProfile } = await supabase.from("profiles").select("email").eq("id", ownerUserId).maybeSingle();
       if (ownerProfile?.email) {
         supabase.functions.invoke("notify-dupla-disponivel", {
@@ -299,52 +324,6 @@ const Index = () => {
     },
     onError: () => toast.error("Erro ao se disponibilizar."),
   });
-
-  // Realtime - debounced
-  useEffect(() => {
-    const timeouts: Record<string, ReturnType<typeof setTimeout>> = {};
-    const channel = supabase
-      .channel("realtime-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
-        clearTimeout(timeouts.ag);
-        timeouts.ag = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["agendamentos"] }), 1500);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "avisos" }, () => {
-        clearTimeout(timeouts.av);
-        timeouts.av = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["avisos"] }), 1500);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "disponibilidade" }, () => {
-        clearTimeout(timeouts.di);
-        timeouts.di = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["disponibilidade"] }), 1500);
-      })
-      .subscribe();
-
-    return () => {
-      Object.values(timeouts).forEach(clearTimeout);
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
-  const agendamentosFiltrados = useMemo(
-    () => agendamentos.filter((a) => {
-      if (filtroLocal !== "todos" && a.local !== filtroLocal) return false;
-      if (filtroHorario !== "todos" && a.horario !== filtroHorario) return false;
-      return true;
-    }),
-    [agendamentos, filtroLocal, filtroHorario]
-  );
-
-  const dayGroups = useMemo(() => {
-    const groups: Record<number, Agendamento[]> = {};
-    for (const a of agendamentosFiltrados) {
-      if (a.data) {
-        const day = getDay(new Date(a.data + "T12:00:00"));
-        if (!groups[day]) groups[day] = [];
-        groups[day].push(a);
-      }
-    }
-    return groups;
-  }, [agendamentosFiltrados]);
 
   const addMutation = useMutation({
     mutationFn: async (formData: z.infer<typeof agendamentoSchema>) => {
@@ -422,6 +401,48 @@ const Index = () => {
     onError: () => toast.error("Erro ao remover aviso."),
   });
 
+  // ── Realtime (debounced) ───────────────────────────────────
+  useEffect(() => {
+    const timeouts: Record<string, ReturnType<typeof setTimeout>> = {};
+    const channel = supabase
+      .channel("realtime-all")
+      .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
+        clearTimeout(timeouts.ag);
+        timeouts.ag = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["agendamentos"] }), 1500);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "avisos" }, () => {
+        clearTimeout(timeouts.av);
+        timeouts.av = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["avisos"] }), 1500);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "disponibilidade" }, () => {
+        clearTimeout(timeouts.di);
+        timeouts.di = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["disponibilidade"] }), 1500);
+      })
+      .subscribe();
+    return () => {
+      Object.values(timeouts).forEach(clearTimeout);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  // ── Derived data ───────────────────────────────────────────
+  const agendamentosFiltrados = useMemo(
+    () => agendamentos.filter(a => filtroLocal === "todos" || a.local === filtroLocal),
+    [agendamentos, filtroLocal]
+  );
+
+  const dayGroups = useMemo(() => {
+    const groups: Record<number, Agendamento[]> = {};
+    for (const a of agendamentosFiltrados) {
+      if (a.data) {
+        const day = getDay(new Date(a.data + "T12:00:00"));
+        (groups[day] ??= []).push(a);
+      }
+    }
+    return groups;
+  }, [agendamentosFiltrados]);
+
+  // ── Handlers ───────────────────────────────────────────────
   const handleDelete = useCallback((id: string) => deleteMutation.mutate(id), [deleteMutation]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
@@ -431,12 +452,8 @@ const Index = () => {
       local, horario, data: data ? format(data, "yyyy-MM-dd") : undefined, toda_semana: todaSemana,
     });
     if (!parsed.success) { toast.error(parsed.error.errors[0]?.message || "Dados inválidos"); return; }
-    const dataFormatada = data ? format(data, "yyyy-MM-dd") : null;
-    if (dataFormatada && agendamentos.some(a => a.local === local && a.horario === horario && a.data === dataFormatada)) {
-      toast.error("Esse horário já foi reservado nessa data e local!"); return;
-    }
     addMutation.mutate(parsed.data);
-  }, [nome, nomeDupla, semDupla, local, horario, data, todaSemana, agendamentos, addMutation]);
+  }, [nome, nomeDupla, semDupla, local, horario, data, todaSemana, addMutation]);
 
   const toggleTheme = useCallback(() => {
     setDarkMode(prev => {
@@ -447,12 +464,28 @@ const Index = () => {
     });
   }, []);
 
-  const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-
   const initials = useMemo(() => {
     const n = profile.nome || user?.email || "";
     return n.split(" ").filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
   }, [profile.nome, user?.email]);
+
+  const handleDisponibilizar = useCallback((agId: string, ownerId: string) => {
+    disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId });
+  }, [disponibilizarMutation]);
+
+  // ── Render helpers ─────────────────────────────────────────
+  const renderAgendamentoList = useCallback((items: Agendamento[]) => (
+    <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
+      {items.map(a => (
+        <AgendamentoCard
+          key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete}
+          currentUserId={user?.id} disponibilidades={disponibilidades}
+          onDisponibilizar={handleDisponibilizar}
+          isDisponibilizando={disponibilizarMutation.isPending}
+        />
+      ))}
+    </div>
+  ), [displayMode, isAdmin, handleDelete, user?.id, disponibilidades, handleDisponibilizar, disponibilizarMutation.isPending]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -466,10 +499,10 @@ const Index = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 flex flex-col" aria-describedby="menu-desc">
+              <SheetContent side="left" className="w-72 flex flex-col">
                 <SheetHeader>
                   <SheetTitle className="text-primary">Menu</SheetTitle>
-                  <SheetDescription id="menu-desc" className="sr-only">Navegação principal</SheetDescription>
+                  <SheetDescription className="sr-only">Navegação principal</SheetDescription>
                 </SheetHeader>
 
                 {/* Profile Section */}
@@ -477,9 +510,7 @@ const Index = () => {
                   <div className="flex items-center gap-3">
                     <div className="relative cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                       <Avatar className="h-14 w-14 border-2 border-primary/30">
-                        {profile.avatar_url ? (
-                          <AvatarImage src={profile.avatar_url} alt="Avatar" />
-                        ) : null}
+                        {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt="Avatar" />}
                         <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                           {initials || <User className="h-6 w-6" />}
                         </AvatarFallback>
@@ -487,13 +518,7 @@ const Index = () => {
                       <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1">
                         <Camera className="h-3 w-3 text-primary-foreground" />
                       </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleAvatarUpload}
-                      />
+                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <input
@@ -517,47 +542,30 @@ const Index = () => {
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={profile.genero === "masculino" ? "default" : "outline"}
-                      className="flex-1 text-xs h-8"
-                      onClick={() => saveProfile({ genero: "masculino" })}
-                    >
+                    <Button size="sm" variant={profile.genero === "masculino" ? "default" : "outline"} className="flex-1 text-xs h-8" onClick={() => saveProfile({ genero: "masculino" })}>
                       Irmão
                     </Button>
-                    <Button
-                      size="sm"
-                      variant={profile.genero === "feminino" ? "default" : "outline"}
-                      className="flex-1 text-xs h-8"
-                      onClick={() => saveProfile({ genero: "feminino" })}
-                    >
+                    <Button size="sm" variant={profile.genero === "feminino" ? "default" : "outline"} className="flex-1 text-xs h-8" onClick={() => saveProfile({ genero: "feminino" })}>
                       Irmã
                     </Button>
                   </div>
                 </div>
 
                 <nav className="mt-4 flex flex-col gap-1.5 flex-1">
-                  <Button
-                    variant={activeSection === "form" ? "default" : "ghost"}
-                    className="justify-start gap-2"
-                    onClick={() => { setActiveSection("form"); setMenuOpen(false); }}
-                  >
-                    <Plus className="h-4 w-4" />Novo Agendamento
-                  </Button>
-                  <Button
-                    variant={activeSection === "agenda" ? "default" : "ghost"}
-                    className="justify-start gap-2"
-                    onClick={() => { setActiveSection("agenda"); setMenuOpen(false); }}
-                  >
-                    <Users className="h-4 w-4" />Agenda
-                  </Button>
-                  <Button
-                    variant={activeSection === "avisos" ? "default" : "ghost"}
-                    className="justify-start gap-2"
-                    onClick={() => { setActiveSection("avisos"); setMenuOpen(false); }}
-                  >
-                    <Megaphone className="h-4 w-4" />Quadro de Avisos
-                  </Button>
+                  {[
+                    { key: "form" as const, icon: Plus, label: "Novo Agendamento" },
+                    { key: "agenda" as const, icon: Users, label: "Agenda" },
+                    { key: "avisos" as const, icon: Megaphone, label: "Quadro de Avisos" },
+                  ].map(item => (
+                    <Button
+                      key={item.key}
+                      variant={activeSection === item.key ? "default" : "ghost"}
+                      className="justify-start gap-2"
+                      onClick={() => { setActiveSection(item.key); setMenuOpen(false); }}
+                    >
+                      <item.icon className="h-4 w-4" />{item.label}
+                    </Button>
+                  ))}
 
                   <div className="border-t border-border my-2" />
 
@@ -576,7 +584,6 @@ const Index = () => {
                   )}
 
                   <div className="flex-1" />
-
                   <div className="border-t border-border my-2" />
                   <Button
                     variant="ghost"
@@ -614,8 +621,8 @@ const Index = () => {
         </div>
       </div>
 
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
-        {/* Form */}
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:py-8 space-y-6">
+        {/* ── Form ──────────────────────────────────────── */}
         {activeSection === "form" && (
           <Card className="border border-primary/15 shadow-md">
             <CardHeader className="bg-primary/5 rounded-t-lg pb-3">
@@ -642,7 +649,7 @@ const Index = () => {
                 <div className="space-y-2">
                   <Label className="font-semibold text-sm">Local</Label>
                   <RadioGroup value={local} onValueChange={setLocal} className="flex gap-4 flex-wrap">
-                    {["Areias", "Ribeirão", "Display"].map(l => (
+                    {LOCAIS.map(l => (
                       <div key={l} className="flex items-center gap-2">
                         <RadioGroupItem value={l} id={l} />
                         <Label htmlFor={l} className="cursor-pointer font-medium text-sm">{l}</Label>
@@ -711,33 +718,36 @@ const Index = () => {
           </Card>
         )}
 
-        {/* Agenda */}
+        {/* ── Agenda ────────────────────────────────────── */}
         {activeSection === "agenda" && (
           <div>
-            <h2 className="mb-4 flex items-center gap-2 text-lg sm:text-xl font-bold text-foreground">
-              <Users className="h-5 w-5 text-primary" />Agenda ({agendamentosFiltrados.length})
-            </h2>
-            <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-lg sm:text-xl font-bold text-foreground">
+                <CalendarDays className="h-5 w-5 text-primary" />Agenda
+                <span className="text-sm font-normal text-muted-foreground">({agendamentosFiltrados.length})</span>
+              </h2>
+              <div className="flex gap-1 border border-border rounded-md p-0.5">
+                <Button variant={displayMode === "grid" ? "default" : "ghost"} size="icon" className="h-7 w-7" onClick={() => { setDisplayMode("grid"); localStorage.setItem("displayMode", "grid"); }}>
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant={displayMode === "list" ? "default" : "ghost"} size="icon" className="h-7 w-7" onClick={() => { setDisplayMode("list"); localStorage.setItem("displayMode", "list"); }}>
+                  <List className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Filter */}
+            <div className="flex items-center gap-2 mb-4">
+              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
               <Select value={filtroLocal} onValueChange={setFiltroLocal}>
-                <SelectTrigger className="w-[140px] h-9 text-xs">
-                  <Filter className="h-3 w-3 mr-1" /><SelectValue placeholder="Local" />
+                <SelectTrigger className="w-[160px] h-9 text-xs">
+                  <SelectValue placeholder="Filtrar por local" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os locais</SelectItem>
-                  <SelectItem value="Areias">Areias</SelectItem>
-                  <SelectItem value="Ribeirão">Ribeirão</SelectItem>
-                  <SelectItem value="Display">Display</SelectItem>
+                  {LOCAIS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Input placeholder="Filtrar horário..." value={filtroHorario === "todos" ? "" : filtroHorario} onChange={e => setFiltroHorario(e.target.value || "todos")} className="w-[160px] h-9 text-xs" />
-              <div className="ml-auto flex gap-1 border border-border rounded-md p-0.5">
-                <Button variant={displayMode === "grid" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => { setDisplayMode("grid"); localStorage.setItem("displayMode", "grid"); }} title="Grade">
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button variant={displayMode === "list" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => { setDisplayMode("list"); localStorage.setItem("displayMode", "list"); }} title="Lista">
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
             </div>
 
             {isLoading ? (
@@ -747,8 +757,12 @@ const Index = () => {
             ) : agendamentosFiltrados.length === 0 ? (
               <Card className="py-12 text-center border-dashed">
                 <CardContent>
-                  <p className="text-muted-foreground">
-                    {agendamentos.length === 0 ? "Nenhum agendamento ainda. Seja o primeiro!" : "Nenhum resultado para os filtros."}
+                  <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                  <p className="text-muted-foreground font-medium">
+                    {agendamentos.length === 0 ? "Nenhum agendamento ainda." : "Nenhum resultado para os filtros."}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {agendamentos.length === 0 ? "Seja o primeiro a agendar!" : "Tente alterar o filtro de local."}
                   </p>
                 </CardContent>
               </Card>
@@ -759,28 +773,24 @@ const Index = () => {
                   {DIAS.map((dia, i) => {
                     const count = dayGroups[i]?.length || 0;
                     if (count === 0) return null;
-                    return <TabsTrigger key={dia} value={String(i)} className="text-xs">{dia} ({count})</TabsTrigger>;
+                    return (
+                      <TabsTrigger key={dia} value={String(i)} className="text-xs">
+                        {dia.slice(0, 3)} <span className="ml-1 text-muted-foreground">({count})</span>
+                      </TabsTrigger>
+                    );
                   })}
                 </TabsList>
 
                 <TabsContent value="todos" className="mt-3">
-                  <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
-                    {agendamentosFiltrados.map(a => (
-                      <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
-                    ))}
-                  </div>
+                  {renderAgendamentoList(agendamentosFiltrados)}
                 </TabsContent>
 
-                {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => {
-                  const filtered = dayGroups[dayIndex];
+                {DIAS.map((_, i) => {
+                  const filtered = dayGroups[i];
                   if (!filtered?.length) return null;
                   return (
-                    <TabsContent key={dayIndex} value={String(dayIndex)} className="mt-3">
-                      <div className={displayMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-2"}>
-                        {filtered.map(a => (
-                          <AgendamentoCard key={a.id} a={a} isAdmin={isAdmin} onDelete={handleDelete} currentUserId={user?.id} disponibilidades={disponibilidades} onDisponibilizar={(agId, ownerId) => disponibilizarMutation.mutate({ agendamentoId: agId, ownerUserId: ownerId })} isDisponibilizando={disponibilizarMutation.isPending} />
-                        ))}
-                      </div>
+                    <TabsContent key={i} value={String(i)} className="mt-3">
+                      {renderAgendamentoList(filtered)}
                     </TabsContent>
                   );
                 })}
@@ -789,7 +799,7 @@ const Index = () => {
           </div>
         )}
 
-        {/* Quadro de Avisos */}
+        {/* ── Quadro de Avisos ──────────────────────────── */}
         {activeSection === "avisos" && (
           <Card className="border border-primary/30 shadow-md">
             <CardHeader className="bg-primary/10 rounded-t-lg pb-3">
@@ -806,7 +816,10 @@ const Index = () => {
                 </form>
               )}
               {avisos.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum aviso no momento.</p>
+                <div className="text-center py-8">
+                  <Megaphone className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                  <p className="text-sm text-muted-foreground">Nenhum aviso no momento.</p>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {avisos.map(aviso => (
