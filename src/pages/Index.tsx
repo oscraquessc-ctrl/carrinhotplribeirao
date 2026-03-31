@@ -525,7 +525,6 @@ const Index = () => {
                         className="font-semibold text-sm text-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none w-full truncate"
                         value={editNome}
                         onChange={e => setEditNome(e.target.value)}
-                        onBlur={() => { if (editNome !== profile.nome) saveProfile({ nome: editNome }); }}
                         placeholder="Seu nome"
                       />
                       <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
@@ -537,18 +536,34 @@ const Index = () => {
                       className="text-xs text-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none w-full"
                       value={editTelefone}
                       onChange={e => setEditTelefone(e.target.value)}
-                      onBlur={() => { if (editTelefone !== profile.telefone) saveProfile({ telefone: editTelefone }); }}
                       placeholder="Seu telefone"
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant={profile.genero === "masculino" ? "default" : "outline"} className="flex-1 text-xs h-8" onClick={() => saveProfile({ genero: "masculino" })}>
+                    <Button size="sm" variant={profile.genero === "masculino" ? "default" : "outline"} className="flex-1 text-xs h-8" onClick={() => setProfile(p => ({ ...p, genero: "masculino" }))}>
                       Irmão
                     </Button>
-                    <Button size="sm" variant={profile.genero === "feminino" ? "default" : "outline"} className="flex-1 text-xs h-8" onClick={() => saveProfile({ genero: "feminino" })}>
+                    <Button size="sm" variant={profile.genero === "feminino" ? "default" : "outline"} className="flex-1 text-xs h-8" onClick={() => setProfile(p => ({ ...p, genero: "feminino" }))}>
                       Irmã
                     </Button>
                   </div>
+                  <Button
+                    size="sm"
+                    className="w-full text-xs h-9 font-semibold"
+                    onClick={() => {
+                      const updates: Partial<Profile> = {};
+                      if (editNome !== profile.nome) updates.nome = editNome;
+                      if (editTelefone !== (profile.telefone || "")) updates.telefone = editTelefone;
+                      if (profile.genero) updates.genero = profile.genero;
+                      if (Object.keys(updates).length > 0) {
+                        saveProfile(updates);
+                      } else {
+                        toast.info("Nenhuma alteração para salvar.");
+                      }
+                    }}
+                  >
+                    Salvar Perfil
+                  </Button>
                 </div>
 
                 <nav className="mt-4 flex flex-col gap-1.5 flex-1">
