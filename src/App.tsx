@@ -25,22 +25,9 @@ const queryClient = new QueryClient({
   },
 });
 
-const SplashScreen = () => (
-  <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-    <div className="w-full max-w-xs mx-auto text-center space-y-5 px-4">
-      <div className="mx-auto rounded-2xl overflow-hidden shadow-lg border border-primary/15 animate-fade-in">
-        <img src={coverImage} alt="Carrinho TPL Ribeirão" className="w-full h-auto" />
-      </div>
-      <div className="animate-fade-in">
-        <h1 className="text-2xl font-bold text-primary">Carrinho TPL Ribeirão</h1>
-        <p className="text-sm text-primary mt-1">Agenda de Testemunho Público</p>
-      </div>
-      <div className="flex justify-center animate-fade-in">
-        <div className="h-1.5 w-20 bg-primary/20 rounded-full overflow-hidden">
-          <div className="h-full bg-primary rounded-full w-1/2 animate-pulse" />
-        </div>
-      </div>
-    </div>
+const SimpleLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
   </div>
 );
 
