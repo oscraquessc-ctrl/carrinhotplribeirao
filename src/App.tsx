@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import coverImage from "@/assets/cover.webp";
+
 
 const Index = lazy(() => import("./pages/Index"));
 const Informacoes = lazy(() => import("./pages/Informacoes"));
