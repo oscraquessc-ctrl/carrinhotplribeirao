@@ -845,6 +845,31 @@ const Index = () => {
           </Card>
         )}
       </main>
+
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-md shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <div className="mx-auto max-w-4xl flex items-center justify-around px-2 py-1.5">
+          {[
+            { key: "form" as const, icon: Plus, label: "Agendar" },
+            { key: "agenda" as const, icon: CalendarDays, label: "Agenda" },
+            { key: "avisos" as const, icon: Megaphone, label: "Avisos" },
+          ].map(item => (
+            <button
+              key={item.key}
+              onClick={() => setActiveSection(item.key)}
+              className={cn(
+                "flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors min-w-[64px]",
+                activeSection === item.key
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <item.icon className={cn("h-5 w-5", activeSection === item.key && "text-primary")} />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 };
