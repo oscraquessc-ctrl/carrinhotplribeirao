@@ -754,18 +754,23 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Filter */}
-            <div className="flex items-center gap-2 mb-4">
-              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Select value={filtroLocal} onValueChange={setFiltroLocal}>
-                <SelectTrigger className="w-[160px] h-9 text-xs">
-                  <SelectValue placeholder="Filtrar por local" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os locais</SelectItem>
-                  {LOCAIS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            {/* Filter chips */}
+            <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+              {["todos", ...LOCAIS].map(l => (
+                <button
+                  key={l}
+                  onClick={() => setFiltroLocal(l)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors border",
+                    filtroLocal === l
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card text-muted-foreground border-border hover:border-primary/30 hover:text-foreground"
+                  )}
+                >
+                  {l === "todos" && <Filter className="h-3 w-3" />}
+                  {l === "todos" ? "Todos" : l}
+                </button>
+              ))}
             </div>
 
             {isLoading ? (
@@ -785,34 +790,54 @@ const Index = () => {
                 </CardContent>
               </Card>
             ) : (
-              <Tabs defaultValue="todos" className="w-full">
-                <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
-                  <TabsTrigger value="todos" className="text-xs">Todos</TabsTrigger>
-                  {DIAS.map((dia, i) => {
-                    const count = dayGroups[i]?.length || 0;
-                    if (count === 0) return null;
-                    return (
-                      <TabsTrigger key={dia} value={String(i)} className="text-xs">
-                        {dia.slice(0, 3)} <span className="ml-1 text-muted-foreground">({count})</span>
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
+              <div className="space-y-6">
+                {/* Upcoming */}
+                {upcomingGroups.map(([dateKey, items]) => (
+                  <div key={dateKey}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-semibold text-primary">
+                        <CalendarIcon className="h-3 w-3" />
+                        {dateKey === "sem-data" ? "Sem data definida" : (() => {
+                          const d = new Date(dateKey + "T12:00:00");
+                          const dayName = format(d, "EEEE", { locale: ptBR });
+                          const formatted = format(d, "dd/MM/yyyy");
+                          return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} — ${formatted}`;
+                        })()}
+                        {dateKey === today && (
+                          <span className="ml-1 rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-[10px] font-bold">HOJE</span>
+                        )}
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                    {renderAgendamentoList(items)}
+                  </div>
+                ))}
 
-                <TabsContent value="todos" className="mt-3">
-                  {renderAgendamentoList(agendamentosFiltrados)}
-                </TabsContent>
-
-                {DIAS.map((_, i) => {
-                  const filtered = dayGroups[i];
-                  if (!filtered?.length) return null;
-                  return (
-                    <TabsContent key={i} value={String(i)} className="mt-3">
-                      {renderAgendamentoList(filtered)}
-                    </TabsContent>
-                  );
-                })}
-              </Tabs>
+                {/* Past (collapsed) */}
+                {pastGroups.length > 0 && (
+                  <details className="group">
+                    <summary className="flex items-center gap-2 cursor-pointer select-none text-muted-foreground hover:text-foreground transition-colors mb-2">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 border border-border px-3 py-1 text-xs font-medium">
+                        <Clock className="h-3 w-3" />
+                        Anteriores ({pastGroups.reduce((sum, [, items]) => sum + items.length, 0)})
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                    </summary>
+                    <div className="space-y-4 mt-2 opacity-70">
+                      {pastGroups.map(([dateKey, items]) => (
+                        <div key={dateKey}>
+                          <p className="text-xs font-medium text-muted-foreground mb-2 pl-1">
+                            {format(new Date(dateKey + "T12:00:00"), "EEEE, dd/MM/yyyy", { locale: ptBR })}
+                          </p>
+                          {renderAgendamentoList(items)}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
             )}
           </div>
         )}
