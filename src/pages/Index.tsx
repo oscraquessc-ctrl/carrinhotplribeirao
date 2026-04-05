@@ -431,6 +431,21 @@ const Index = () => {
     [agendamentos, filtroLocal]
   );
 
+  // Group by date for better display
+  const dateGroups = useMemo(() => {
+    const groups: Record<string, Agendamento[]> = {};
+    for (const a of agendamentosFiltrados) {
+      const key = a.data || "sem-data";
+      (groups[key] ??= []).push(a);
+    }
+    // Sort by date
+    return Object.entries(groups).sort(([a], [b]) => {
+      if (a === "sem-data") return 1;
+      if (b === "sem-data") return -1;
+      return a.localeCompare(b);
+    });
+  }, [agendamentosFiltrados]);
+
   const dayGroups = useMemo(() => {
     const groups: Record<number, Agendamento[]> = {};
     for (const a of agendamentosFiltrados) {
@@ -441,6 +456,11 @@ const Index = () => {
     }
     return groups;
   }, [agendamentosFiltrados]);
+
+  // Separate past and future agendamentos
+  const today = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+  const upcomingGroups = useMemo(() => dateGroups.filter(([key]) => key >= today || key === "sem-data"), [dateGroups, today]);
+  const pastGroups = useMemo(() => dateGroups.filter(([key]) => key < today && key !== "sem-data"), [dateGroups, today]);
 
   // ── Handlers ───────────────────────────────────────────────
   const handleDelete = useCallback((id: string) => deleteMutation.mutate(id), [deleteMutation]);
