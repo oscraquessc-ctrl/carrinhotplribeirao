@@ -488,21 +488,28 @@ const Index = () => {
   ), [displayMode, isAdmin, handleDelete, user?.id, disponibilidades, handleDisponibilizar, disponibilizarMutation.isPending]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
+            <CalendarDays className="h-6 w-6 text-primary" />
+            <h1 className="text-lg sm:text-xl font-bold text-foreground">Agenda dos Carrinhos</h1>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button variant="outline" size="icon" className="h-8 w-8" title={darkMode ? "Fundo branco" : "Fundo preto"} onClick={toggleTheme}>
+              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 flex flex-col">
+              <SheetContent side="right" className="w-72 flex flex-col">
                 <SheetHeader>
-                  <SheetTitle className="text-primary">Menu</SheetTitle>
-                  <SheetDescription className="sr-only">Navegação principal</SheetDescription>
+                  <SheetTitle className="text-primary">Minha Conta</SheetTitle>
+                  <SheetDescription className="sr-only">Configurações do perfil</SheetDescription>
                 </SheetHeader>
 
                 {/* Profile Section */}
@@ -567,28 +574,16 @@ const Index = () => {
                 </div>
 
                 <nav className="mt-4 flex flex-col gap-1.5 flex-1">
-                  {[
-                    { key: "form" as const, icon: Plus, label: "Novo Agendamento" },
-                    { key: "agenda" as const, icon: Users, label: "Agenda" },
-                    { key: "avisos" as const, icon: Megaphone, label: "Quadro de Avisos" },
-                  ].map(item => (
-                    <Button
-                      key={item.key}
-                      variant={activeSection === item.key ? "default" : "ghost"}
-                      className="justify-start gap-2"
-                      onClick={() => { setActiveSection(item.key); setMenuOpen(false); }}
-                    >
-                      <item.icon className="h-4 w-4" />{item.label}
-                    </Button>
-                  ))}
-
-                  <div className="border-t border-border my-2" />
-
                   <Link to="/informacoes" onClick={() => setMenuOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start gap-2">
                       <MapPin className="h-4 w-4" />Informações
                     </Button>
                   </Link>
+                  <a href="https://wa.me/5548988425163?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20a%20agenda%20do%20carrinho" target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <WhatsAppIcon className="h-4 w-4 text-primary" />Ajuda via WhatsApp
+                    </Button>
+                  </a>
 
                   {isAdmin && (
                     <Link to="/admin" onClick={() => setMenuOpen(false)}>
@@ -610,29 +605,17 @@ const Index = () => {
                 </nav>
               </SheetContent>
             </Sheet>
-            <CalendarDays className="h-6 w-6 text-primary" />
-            <h1 className="text-lg sm:text-xl font-bold text-foreground">Agenda dos Carrinhos</h1>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="icon" className="h-8 w-8" title={darkMode ? "Fundo branco" : "Fundo preto"} onClick={toggleTheme}>
-              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <a href="https://wa.me/5548988425163?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20a%20agenda%20do%20carrinho" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="icon" className="h-8 w-8" title="Ajuda via WhatsApp">
-                <WhatsAppIcon className="h-4 w-4 text-primary" />
-              </Button>
-            </a>
           </div>
         </div>
       </header>
 
       {/* Cover Image */}
-      <div className="relative w-full h-44 sm:h-56 md:h-64 overflow-hidden">
+      <div className="relative w-full h-36 sm:h-48 overflow-hidden">
         <img src={coverImage} alt="Carrinho TPL Ribeirão" className="w-full h-full object-cover" loading="eager" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-        <div className="absolute bottom-4 left-0 right-0 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold drop-shadow-lg text-secondary-foreground">Carrinho TPL Ribeirão</h2>
-          <p className="text-sm drop-shadow text-secondary-foreground">Agenda de Testemunho Público</p>
+        <div className="absolute bottom-3 left-0 right-0 text-center">
+          <h2 className="text-xl sm:text-2xl font-bold drop-shadow-lg text-secondary-foreground">Carrinho TPL Ribeirão</h2>
+          <p className="text-xs drop-shadow text-secondary-foreground">Agenda de Testemunho Público</p>
         </div>
       </div>
 
@@ -862,6 +845,31 @@ const Index = () => {
           </Card>
         )}
       </main>
+
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-md shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <div className="mx-auto max-w-4xl flex items-center justify-around px-2 py-1.5">
+          {[
+            { key: "form" as const, icon: Plus, label: "Agendar" },
+            { key: "agenda" as const, icon: CalendarDays, label: "Agenda" },
+            { key: "avisos" as const, icon: Megaphone, label: "Avisos" },
+          ].map(item => (
+            <button
+              key={item.key}
+              onClick={() => setActiveSection(item.key)}
+              className={cn(
+                "flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors min-w-[64px]",
+                activeSection === item.key
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <item.icon className={cn("h-5 w-5", activeSection === item.key && "text-primary")} />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 };
