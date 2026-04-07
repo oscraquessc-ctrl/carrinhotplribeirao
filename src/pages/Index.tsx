@@ -47,7 +47,7 @@ const agendamentoSchema = z.object({
 
 const LOCAL_COLORS: Record<string, string> = {
   Carrinho: "bg-primary/10 text-primary border-primary/30",
-  Areias: "bg-accent/10 text-accent-foreground border-accent/30",
+  Areias: "bg-accent/10 border-accent/30 text-secondary-foreground",
   Ribeirão: "bg-secondary text-secondary-foreground border-border",
   Display: "bg-primary/15 text-primary border-primary/20",
 };
@@ -113,12 +113,12 @@ const AgendamentoCard = memo(({
                 <MapPin className="h-3 w-3" />{a.local}
               </span>
               {a.horario && (
-                <span className="inline-flex items-center rounded-full border border-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                <span className="inline-flex items-center rounded-full border border-muted px-2.5 py-0.5 text-xs font-medium gap-1 text-secondary-foreground">
                   <Clock className="h-3 w-3" />{a.horario}
                 </span>
               )}
               {a.data && (
-                <span className="inline-flex items-center rounded-full border border-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground gap-1">
+                <span className="inline-flex items-center rounded-full border border-muted px-2.5 py-0.5 text-xs font-medium gap-1 text-secondary-foreground">
                   <CalendarIcon className="h-3 w-3" />
                   {format(new Date(a.data + "T12:00:00"), "dd/MM/yyyy")}
                 </span>
