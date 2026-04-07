@@ -41,12 +41,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let mounted = true;
 
     // Get initial session first
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
       const u = session?.user ?? null;
       setUser(u);
       if (u) {
-        await checkAdmin(u.id);
+        checkAdmin(u.id);
       }
       setLoading(false);
     }).catch(() => {
