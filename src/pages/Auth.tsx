@@ -132,7 +132,7 @@ const Auth = () => {
                   : mode === "login"
                   ? "Entrar"
                   : mode === "signup"
-                  ? "Criar Conta"
+                  ? "Confirmar"
                   : "Enviar Link de Recuperação"}
               </Button>
             </form>
