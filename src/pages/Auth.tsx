@@ -123,6 +123,11 @@ const Auth = () => {
                     required
                     className="h-10"
                   />
+                  {mode === "signup" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      A senha deve ter pelo menos 8 caracteres.
+                    </p>
+                  )}
                 </div>
               )}
 
