@@ -39,7 +39,7 @@ export const Cadastro = () => {
             Cadastre-se para participar da agenda
           </div>
         </div>
-        <Field label="Nome" value="João Silva" delay={20} typed={frame} />
+        <Field label="Nome" value="Yuri Serrão" delay={20} typed={frame} />
         <Field label="E-mail" value="joao@email.com" delay={45} typed={frame} />
         <Field label="Senha" value="••••••••" delay={75} typed={frame} />
         <div style={{ fontSize: 16, color: colors.muted, marginTop: -10, marginBottom: 22 }}>
