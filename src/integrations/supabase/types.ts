@@ -112,6 +112,39 @@ export type Database = {
           },
         ]
       }
+      equipamentos: {
+        Row: {
+          created_at: string
+          id: string
+          local: string
+          nome: string
+          observacao: string | null
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          local: string
+          nome: string
+          observacao?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          local?: string
+          nome?: string
+          observacao?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

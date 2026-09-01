@@ -33,13 +33,33 @@ import coverImage from "@/assets/cover.webp";
 const HORAS = Array.from({ length: 17 }, (_, i) => String(i + 7).padStart(2, "0"));
 const MINUTOS = ["00", "15", "30", "45"];
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-const LOCAIS = ["Areias", "Ribeirão", "Display"];
+const LOCAIS = ["Areias", "Ribeirão", "Trevo do Erasmo"];
+
+// Tipo de equipamento por local: carrinho x display (formatos diferentes)
+const LOCAL_TIPO: Record<string, "carrinho" | "display"> = {
+  Areias: "carrinho",
+  "Ribeirão": "carrinho",
+  "Trevo do Erasmo": "display",
+  Carrinho: "carrinho",
+  Display: "display",
+};
+
+type Equipamento = {
+  id: string; nome: string; tipo: string; local: string;
+  status: string; observacao: string | null;
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  disponivel: "Disponível",
+  manutencao: "Em manutenção",
+  indisponivel: "Indisponível",
+};
 
 const agendamentoSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
   nome_dupla: z.string().trim().max(100).optional(),
   sem_dupla: z.boolean(),
-  local: z.enum(["Carrinho", "Areias", "Ribeirão", "Display"]),
+  local: z.enum(["Carrinho", "Areias", "Ribeirão", "Display", "Trevo do Erasmo"]),
   horario: z.string().min(1, "Selecione um horário"),
   data: z.string().optional(),
   toda_semana: z.boolean(),
@@ -50,7 +70,9 @@ const LOCAL_COLORS: Record<string, string> = {
   Areias: "bg-accent/10 border-accent/30 text-secondary-foreground",
   Ribeirão: "bg-secondary text-secondary-foreground border-border",
   Display: "bg-primary/15 text-primary border-primary/20",
+  "Trevo do Erasmo": "bg-primary/15 text-primary border-primary/20",
 };
+
 
 type Disponibilidade = {
   id: string; user_id: string; agendamento_id: string; nome: string; created_at: string;
@@ -204,6 +226,26 @@ const Index = () => {
     return isDark;
   });
 
+  // Acessibilidade: tamanho da letra (0 = normal, 1 = grande, 2 = muito grande)
+  const [fontScale, setFontScale] = useState<number>(() => {
+    const v = Number(localStorage.getItem("fontScale") || 0);
+    document.documentElement.classList.toggle("a-plus", v === 1);
+    document.documentElement.classList.toggle("a-plus-2", v === 2);
+    return v;
+  });
+
+  const cycleFontScale = useCallback(() => {
+    setFontScale(prev => {
+      const next = (prev + 1) % 3;
+      document.documentElement.classList.toggle("a-plus", next === 1);
+      document.documentElement.classList.toggle("a-plus-2", next === 2);
+      localStorage.setItem("fontScale", String(next));
+      toast.success(next === 0 ? "Letra normal" : next === 1 ? "Letra grande" : "Letra muito grande");
+      return next;
+    });
+  }, []);
+
+
   // Avisos
   const [novoAviso, setNovoAviso] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
@@ -270,6 +312,28 @@ const Index = () => {
     },
     staleTime: 30_000,
   });
+
+  const { data: equipamentos = [] } = useQuery({
+    queryKey: ["equipamentos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("equipamentos").select("*").order("nome");
+      if (error) throw error;
+      return data as Equipamento[];
+    },
+    staleTime: 30_000,
+  });
+
+  const equipPorLocal = useMemo(() => {
+    const map: Record<string, Equipamento> = {};
+    for (const e of equipamentos) map[e.local] = e;
+    return map;
+  }, [equipamentos]);
+
+  const equipIndisponiveis = useMemo(
+    () => equipamentos.filter(e => e.status !== "disponivel"),
+    [equipamentos]
+  );
+
 
   const { data: avisos = [] } = useQuery({
     queryKey: ["avisos"],

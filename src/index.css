@@ -104,3 +104,26 @@
     @apply transition-all duration-200 ease-out;
   }
 }
+
+/* Modo acessível (A+) — texto e alvos de toque maiores para idosos */
+html.a-plus {
+  font-size: 19px;
+}
+
+html.a-plus-2 {
+  font-size: 22px;
+}
+
+html.a-plus button,
+html.a-plus a[role="button"],
+html.a-plus-2 button,
+html.a-plus-2 a[role="button"] {
+  min-height: 2.75rem;
+}
+
+html.a-plus-2 .text-xs,
+html.a-plus-2 .text-\[10px\] {
+  font-size: 0.85rem !important;
+  line-height: 1.25rem;
+}
+
