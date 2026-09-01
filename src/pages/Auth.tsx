@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { lovable } from "@/integrations/lovable";
 import coverImage from "@/assets/cover.webp";
 
 const Auth = () => {
@@ -55,6 +56,20 @@ const Auth = () => {
     } catch (err: any) {
       toast.error(err.message || "Erro ao autenticar");
     } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setSubmitting(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.redirected) return;
+      if (result.error) throw result.error;
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao entrar com Google");
       setSubmitting(false);
     }
   };
