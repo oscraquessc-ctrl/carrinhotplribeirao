@@ -226,6 +226,26 @@ const Index = () => {
     return isDark;
   });
 
+  // Acessibilidade: tamanho da letra (0 = normal, 1 = grande, 2 = muito grande)
+  const [fontScale, setFontScale] = useState<number>(() => {
+    const v = Number(localStorage.getItem("fontScale") || 0);
+    document.documentElement.classList.toggle("a-plus", v === 1);
+    document.documentElement.classList.toggle("a-plus-2", v === 2);
+    return v;
+  });
+
+  const cycleFontScale = useCallback(() => {
+    setFontScale(prev => {
+      const next = (prev + 1) % 3;
+      document.documentElement.classList.toggle("a-plus", next === 1);
+      document.documentElement.classList.toggle("a-plus-2", next === 2);
+      localStorage.setItem("fontScale", String(next));
+      toast.success(next === 0 ? "Letra normal" : next === 1 ? "Letra grande" : "Letra muito grande");
+      return next;
+    });
+  }, []);
+
+
   // Avisos
   const [novoAviso, setNovoAviso] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
