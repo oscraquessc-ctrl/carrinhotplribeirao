@@ -313,6 +313,28 @@ const Index = () => {
     staleTime: 30_000,
   });
 
+  const { data: equipamentos = [] } = useQuery({
+    queryKey: ["equipamentos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("equipamentos").select("*").order("nome");
+      if (error) throw error;
+      return data as Equipamento[];
+    },
+    staleTime: 30_000,
+  });
+
+  const equipPorLocal = useMemo(() => {
+    const map: Record<string, Equipamento> = {};
+    for (const e of equipamentos) map[e.local] = e;
+    return map;
+  }, [equipamentos]);
+
+  const equipIndisponiveis = useMemo(
+    () => equipamentos.filter(e => e.status !== "disponivel"),
+    [equipamentos]
+  );
+
+
   const { data: avisos = [] } = useQuery({
     queryKey: ["avisos"],
     queryFn: async () => {
