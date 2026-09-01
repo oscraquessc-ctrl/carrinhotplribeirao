@@ -33,13 +33,33 @@ import coverImage from "@/assets/cover.webp";
 const HORAS = Array.from({ length: 17 }, (_, i) => String(i + 7).padStart(2, "0"));
 const MINUTOS = ["00", "15", "30", "45"];
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-const LOCAIS = ["Areias", "Ribeirão", "Display"];
+const LOCAIS = ["Areias", "Ribeirão", "Trevo do Erasmo"];
+
+// Tipo de equipamento por local: carrinho x display (formatos diferentes)
+const LOCAL_TIPO: Record<string, "carrinho" | "display"> = {
+  Areias: "carrinho",
+  "Ribeirão": "carrinho",
+  "Trevo do Erasmo": "display",
+  Carrinho: "carrinho",
+  Display: "display",
+};
+
+type Equipamento = {
+  id: string; nome: string; tipo: string; local: string;
+  status: string; observacao: string | null;
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  disponivel: "Disponível",
+  manutencao: "Em manutenção",
+  indisponivel: "Indisponível",
+};
 
 const agendamentoSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
   nome_dupla: z.string().trim().max(100).optional(),
   sem_dupla: z.boolean(),
-  local: z.enum(["Carrinho", "Areias", "Ribeirão", "Display"]),
+  local: z.enum(["Carrinho", "Areias", "Ribeirão", "Display", "Trevo do Erasmo"]),
   horario: z.string().min(1, "Selecione um horário"),
   data: z.string().optional(),
   toda_semana: z.boolean(),
@@ -50,7 +70,9 @@ const LOCAL_COLORS: Record<string, string> = {
   Areias: "bg-accent/10 border-accent/30 text-secondary-foreground",
   Ribeirão: "bg-secondary text-secondary-foreground border-border",
   Display: "bg-primary/15 text-primary border-primary/20",
+  "Trevo do Erasmo": "bg-primary/15 text-primary border-primary/20",
 };
+
 
 type Disponibilidade = {
   id: string; user_id: string; agendamento_id: string; nome: string; created_at: string;
