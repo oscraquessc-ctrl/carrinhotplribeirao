@@ -738,15 +738,37 @@ const Index = () => {
                 )}
                 <div className="space-y-2">
                   <Label className="font-semibold text-sm">Local</Label>
-                  <RadioGroup value={local} onValueChange={setLocal} className="flex gap-4 flex-wrap">
-                    {LOCAIS.map(l => (
-                      <div key={l} className="flex items-center gap-2">
-                        <RadioGroupItem value={l} id={l} />
-                        <Label htmlFor={l} className="cursor-pointer font-medium text-sm">{l}</Label>
-                      </div>
-                    ))}
+                  <RadioGroup value={local} onValueChange={setLocal} className="flex flex-col gap-2">
+                    {LOCAIS.map(l => {
+                      const eq = equipPorLocal[l];
+                      const bloqueado = !!eq && eq.status !== "disponivel";
+                      return (
+                        <div key={l} className={cn("flex items-center gap-2 rounded-lg border p-2", bloqueado ? "border-destructive/40 bg-destructive/5" : "border-border")}>
+                          <RadioGroupItem value={l} id={l} disabled={bloqueado} />
+                          <Label htmlFor={l} className={cn("cursor-pointer font-medium text-sm flex-1", bloqueado && "text-muted-foreground line-through")}>
+                            {l}
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">
+                              ({LOCAL_TIPO[l] === "display" ? "Display" : "Carrinho"})
+                            </span>
+                          </Label>
+                          {bloqueado && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 border border-destructive/30 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                              <AlertTriangle className="h-3 w-3" />
+                              {STATUS_LABEL[eq.status] || eq.status}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </RadioGroup>
+                  {equipPorLocal[local] && equipPorLocal[local].status !== "disponivel" && (
+                    <p className="text-xs text-destructive font-medium">
+                      {STATUS_LABEL[equipPorLocal[local].status]}
+                      {equipPorLocal[local].observacao ? ` — ${equipPorLocal[local].observacao}` : ""}. Escolha outro local.
+                    </p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <Label className="font-semibold text-sm flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />Horário
