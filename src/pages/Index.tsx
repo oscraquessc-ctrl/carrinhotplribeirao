@@ -479,7 +479,12 @@ const Index = () => {
         clearTimeout(timeouts.di);
         timeouts.di = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["disponibilidade"] }), 1500);
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "equipamentos" }, () => {
+        clearTimeout(timeouts.eq);
+        timeouts.eq = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["equipamentos"] }), 1000);
+      })
       .subscribe();
+
     return () => {
       Object.values(timeouts).forEach(clearTimeout);
       supabase.removeChannel(channel);
@@ -528,13 +533,19 @@ const Index = () => {
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    const eq = equipPorLocal[local];
+    if (eq && eq.status !== "disponivel") {
+      toast.error(`${eq.nome} está ${(STATUS_LABEL[eq.status] || eq.status).toLowerCase()}. Escolha outro local.`);
+      return;
+    }
     const parsed = agendamentoSchema.safeParse({
       nome, nome_dupla: semDupla ? undefined : nomeDupla, sem_dupla: semDupla,
       local, horario, data: data ? format(data, "yyyy-MM-dd") : undefined, toda_semana: todaSemana,
     });
     if (!parsed.success) { toast.error(parsed.error.errors[0]?.message || "Dados inválidos"); return; }
     addMutation.mutate(parsed.data);
-  }, [nome, nomeDupla, semDupla, local, horario, data, todaSemana, addMutation]);
+  }, [nome, nomeDupla, semDupla, local, horario, data, todaSemana, addMutation, equipPorLocal]);
+
 
   const toggleTheme = useCallback(() => {
     setDarkMode(prev => {
@@ -578,9 +589,20 @@ const Index = () => {
             <h1 className="text-lg sm:text-xl font-bold text-foreground">Agenda dos Carrinhos</h1>
           </div>
           <div className="flex items-center gap-1.5">
+            <Button
+              variant={fontScale > 0 ? "default" : "outline"}
+              size="sm"
+              className="h-8 px-2 font-bold"
+              title="Aumentar tamanho da letra"
+              aria-label="Aumentar tamanho da letra"
+              onClick={cycleFontScale}
+            >
+              {fontScale === 0 ? "A+" : fontScale === 1 ? "A++" : "A−"}
+            </Button>
             <Button variant="outline" size="icon" className="h-8 w-8" title={darkMode ? "Fundo branco" : "Fundo preto"} onClick={toggleTheme}>
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
+
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -727,15 +749,37 @@ const Index = () => {
                 )}
                 <div className="space-y-2">
                   <Label className="font-semibold text-sm">Local</Label>
-                  <RadioGroup value={local} onValueChange={setLocal} className="flex gap-4 flex-wrap">
-                    {LOCAIS.map(l => (
-                      <div key={l} className="flex items-center gap-2">
-                        <RadioGroupItem value={l} id={l} />
-                        <Label htmlFor={l} className="cursor-pointer font-medium text-sm">{l}</Label>
-                      </div>
-                    ))}
+                  <RadioGroup value={local} onValueChange={setLocal} className="flex flex-col gap-2">
+                    {LOCAIS.map(l => {
+                      const eq = equipPorLocal[l];
+                      const bloqueado = !!eq && eq.status !== "disponivel";
+                      return (
+                        <div key={l} className={cn("flex items-center gap-2 rounded-lg border p-2", bloqueado ? "border-destructive/40 bg-destructive/5" : "border-border")}>
+                          <RadioGroupItem value={l} id={l} disabled={bloqueado} />
+                          <Label htmlFor={l} className={cn("cursor-pointer font-medium text-sm flex-1", bloqueado && "text-muted-foreground line-through")}>
+                            {l}
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">
+                              ({LOCAL_TIPO[l] === "display" ? "Display" : "Carrinho"})
+                            </span>
+                          </Label>
+                          {bloqueado && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 border border-destructive/30 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                              <AlertTriangle className="h-3 w-3" />
+                              {STATUS_LABEL[eq.status] || eq.status}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </RadioGroup>
+                  {equipPorLocal[local] && equipPorLocal[local].status !== "disponivel" && (
+                    <p className="text-xs text-destructive font-medium">
+                      {STATUS_LABEL[equipPorLocal[local].status]}
+                      {equipPorLocal[local].observacao ? ` — ${equipPorLocal[local].observacao}` : ""}. Escolha outro local.
+                    </p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <Label className="font-semibold text-sm flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />Horário
@@ -833,6 +877,24 @@ const Index = () => {
                 </button>
               ))}
             </div>
+
+            {equipIndisponiveis.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {equipIndisponiveis.map(eq => (
+                  <div key={eq.id} className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-semibold text-destructive">
+                        {eq.nome} — {STATUS_LABEL[eq.status] || eq.status}
+                      </p>
+                      {eq.observacao && <p className="text-xs text-muted-foreground mt-0.5">{eq.observacao}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+
 
             {isLoading ? (
               <div className="flex justify-center py-12">
