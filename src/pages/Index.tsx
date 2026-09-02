@@ -873,6 +873,24 @@ const Index = () => {
               ))}
             </div>
 
+            {equipIndisponiveis.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {equipIndisponiveis.map(eq => (
+                  <div key={eq.id} className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-semibold text-destructive">
+                        {eq.nome} — {STATUS_LABEL[eq.status] || eq.status}
+                      </p>
+                      {eq.observacao && <p className="text-xs text-muted-foreground mt-0.5">{eq.observacao}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+
+
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <div className="h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
