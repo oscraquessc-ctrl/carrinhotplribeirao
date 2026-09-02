@@ -479,7 +479,12 @@ const Index = () => {
         clearTimeout(timeouts.di);
         timeouts.di = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["disponibilidade"] }), 1500);
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "equipamentos" }, () => {
+        clearTimeout(timeouts.eq);
+        timeouts.eq = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["equipamentos"] }), 1000);
+      })
       .subscribe();
+
     return () => {
       Object.values(timeouts).forEach(clearTimeout);
       supabase.removeChannel(channel);
