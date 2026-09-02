@@ -528,13 +528,19 @@ const Index = () => {
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    const eq = equipPorLocal[local];
+    if (eq && eq.status !== "disponivel") {
+      toast.error(`${eq.nome} está ${(STATUS_LABEL[eq.status] || eq.status).toLowerCase()}. Escolha outro local.`);
+      return;
+    }
     const parsed = agendamentoSchema.safeParse({
       nome, nome_dupla: semDupla ? undefined : nomeDupla, sem_dupla: semDupla,
       local, horario, data: data ? format(data, "yyyy-MM-dd") : undefined, toda_semana: todaSemana,
     });
     if (!parsed.success) { toast.error(parsed.error.errors[0]?.message || "Dados inválidos"); return; }
     addMutation.mutate(parsed.data);
-  }, [nome, nomeDupla, semDupla, local, horario, data, todaSemana, addMutation]);
+  }, [nome, nomeDupla, semDupla, local, horario, data, todaSemana, addMutation, equipPorLocal]);
+
 
   const toggleTheme = useCallback(() => {
     setDarkMode(prev => {
