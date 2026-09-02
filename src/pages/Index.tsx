@@ -578,9 +578,20 @@ const Index = () => {
             <h1 className="text-lg sm:text-xl font-bold text-foreground">Agenda dos Carrinhos</h1>
           </div>
           <div className="flex items-center gap-1.5">
+            <Button
+              variant={fontScale > 0 ? "default" : "outline"}
+              size="sm"
+              className="h-8 px-2 font-bold"
+              title="Aumentar tamanho da letra"
+              aria-label="Aumentar tamanho da letra"
+              onClick={cycleFontScale}
+            >
+              {fontScale === 0 ? "A+" : fontScale === 1 ? "A++" : "A−"}
+            </Button>
             <Button variant="outline" size="icon" className="h-8 w-8" title={darkMode ? "Fundo branco" : "Fundo preto"} onClick={toggleTheme}>
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
+
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9">
